@@ -18,7 +18,7 @@ export const leadSchema = z.object({
   name: z.string().trim().min(2).max(100),
   email: z.string().trim().toLowerCase().email(),
   phone: optionalTrimmedString(30),
-  serviceInterest: z.enum(serviceInterestOptions).optional(),
+  serviceInterest: optionalTrimmedString(100),
   message: optionalTrimmedString(1000),
   consentGiven: z.literal(true),
 });
