@@ -5,17 +5,21 @@ import { leadSchema, serviceInterestOptions, type LeadInput } from "@/lib/valida
 
 type FormStatus = "idle" | "submitting" | "success" | "error";
 
-const initialFormState: LeadInput = {
+type LeadFormState = Omit<LeadInput, "consentGiven"> & {
+  consentGiven: boolean;
+};
+
+const initialFormState: LeadFormState = {
   name: "",
   email: "",
   phone: "",
   serviceInterest: undefined,
   message: "",
-  consentGiven: true,
+  consentGiven: false,
 };
 
 export function LeadForm() {
-  const [formData, setFormData] = useState<LeadInput>(initialFormState);
+  const [formData, setFormData] = useState<LeadFormState>(initialFormState);
   const [status, setStatus] = useState<FormStatus>("idle");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [serverError, setServerError] = useState<string | null>(null);
@@ -83,14 +87,7 @@ export function LeadForm() {
 
       if (response.status === 201 && responseData.success) {
         setStatus("success");
-        setFormData({
-          name: "",
-          email: "",
-          phone: "",
-          serviceInterest: undefined,
-          message: "",
-          consentGiven: true,
-        });
+        setFormData(initialFormState);
       } else if (response.status === 400 && responseData.errors) {
         setFieldErrors(responseData.errors);
         setServerError(responseData.message || "Please fix the highlighted errors below.");
