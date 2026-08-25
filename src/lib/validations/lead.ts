@@ -24,3 +24,23 @@ export const leadSchema = z.object({
 });
 
 export type LeadInput = z.infer<typeof leadSchema>;
+
+export const leadStatusValues = ["NEW", "CONTACTED", "QUALIFIED", "CLOSED_LOST"] as const;
+
+export const updateLeadStatusSchema = z.object({
+  id: z.string().min(1),
+  status: z.enum(leadStatusValues),
+});
+
+export type UpdateLeadStatusInput = z.infer<typeof updateLeadStatusSchema>;
+
+export const adminLeadsQuerySchema = z.object({
+  status: z.enum(leadStatusValues).optional(),
+  search: z.string().trim().max(100).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(10),
+  sortBy: z.enum(["createdAt", "updatedAt", "name", "email", "status"]).default("createdAt"),
+  sortOrder: z.enum(["asc", "desc"]).default("desc"),
+});
+
+export type AdminLeadsQuery = z.infer<typeof adminLeadsQuerySchema>;
