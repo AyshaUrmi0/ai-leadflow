@@ -1,14 +1,25 @@
 import { NextResponse } from "next/server";
 import { getLeadById, updateLeadStatus } from "@/lib/services/lead";
 import { updateLeadStatusSchema } from "@/lib/validations/lead";
-
-// TODO: Security Notice - Authentication and authorization boundaries must be added before production deployment.
+import { verifySession } from "@/lib/dal";
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Authorization boundary check
+    const session = await verifySession();
+    if (!session.isAuth) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Unauthorized access.",
+        },
+        { status: 401 }
+      );
+    }
+
     const { id } = await params;
 
     let body: unknown;

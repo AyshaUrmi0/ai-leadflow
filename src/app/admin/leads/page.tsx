@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getAuthenticatedAdmin } from "@/lib/dal";
+import { logoutAction } from "@/app/admin/login/actions";
 import { getLeads } from "@/lib/services/lead";
 import { LeadsTable } from "@/components/admin/leads-table";
 import type { LeadStatus } from "@prisma/client";
 import type { SerializedLead } from "@/components/admin/lead-details-drawer";
-
-// TODO: Security Notice - Authentication and authorization boundaries must be added before production deployment.
 
 export const metadata: Metadata = {
   title: "Lead Management | Nova Dental Admin",
@@ -24,6 +25,12 @@ interface PageProps {
 const validStatuses: LeadStatus[] = ["NEW", "CONTACTED", "QUALIFIED", "CLOSED_LOST"];
 
 export default async function AdminLeadsPage({ searchParams }: PageProps) {
+  // Data Access Layer security boundary check
+  const admin = await getAuthenticatedAdmin();
+  if (!admin) {
+    redirect("/admin/login?callbackUrl=/admin/leads");
+  }
+
   const resolvedSearchParams = await searchParams;
   const rawStatus = resolvedSearchParams.status;
   const search = resolvedSearchParams.search || "";
@@ -65,32 +72,49 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
             <Link href="/" className="text-lg font-semibold tracking-tight text-slate-900">
               Nova <span className="text-teal-700">Dental</span>
             </Link>
-            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
-              Admin
+            <span className="rounded-md bg-teal-50 px-2 py-0.5 text-xs font-semibold text-teal-800 border border-teal-200">
+              Admin Portal
             </span>
           </div>
-          <Link
-            href="/"
-            className="text-xs font-medium text-teal-700 hover:text-teal-800 focus-visible:outline-2 focus-visible:outline-teal-700"
-          >
-            ← View Public Site
-          </Link>
+
+          <div className="flex items-center gap-4">
+            <span className="hidden sm:inline-block text-xs text-slate-600 font-medium">
+              Signed in as <strong className="text-slate-900">{admin.email}</strong>
+            </span>
+
+            <form action={logoutAction}>
+              <button
+                type="submit"
+                className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-teal-700 transition-colors"
+              >
+                Sign Out
+              </button>
+            </form>
+          </div>
         </div>
       </header>
 
       {/* Main Container */}
       <main className="mx-auto max-w-7xl px-5 py-8 sm:px-6 lg:px-8">
-        {/* Security / Demo Boundary Warning */}
-        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
+        {/* Security Session Banner */}
+        <div className="mb-6 rounded-lg border border-teal-200 bg-teal-50/70 p-4 text-xs text-teal-900 flex items-center justify-between">
           <div className="flex items-center gap-2 font-semibold">
-            <svg className="h-4 w-4 text-amber-700" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+            <svg
+              className="h-4 w-4 text-teal-700"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth="2"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751A11.959 11.959 0 0112 2.714z"
+              />
             </svg>
-            Internal Admin Demo Boundary
+            Authenticated Admin Session Active
           </div>
-          <p className="mt-1 text-amber-800">
-            Note: Database access is restricted server-side. Production deployment requires adding an authentication and session boundary.
-          </p>
+          <span className="text-[11px] text-teal-800">Protected by HttpOnly JWT Session & DAL</span>
         </div>
 
         {/* Page Title */}
