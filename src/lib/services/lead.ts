@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import type { LeadStatus, Prisma } from "@prisma/client";
+import { recordActivityLog } from "@/lib/services/activity";
+import { LeadActivityType, type LeadStatus, type Prisma } from "@prisma/client";
 
 export interface GetLeadsParams {
   status?: LeadStatus;
@@ -81,9 +82,45 @@ export async function getLeadById(id: string) {
   });
 }
 
-export async function updateLeadStatus(id: string, status: LeadStatus) {
-  return await prisma.lead.update({
+export async function updateLeadStatus(
+  id: string,
+  status: LeadStatus,
+  actorId?: string
+) {
+  const existingLead = await prisma.lead.findUnique({
     where: { id },
-    data: { status },
+    select: { status: true },
+  });
+
+  if (!existingLead) {
+    throw new Error("Lead not found");
+  }
+
+  if (existingLead.status === status) {
+    return await prisma.lead.findUnique({ where: { id } });
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    const updatedLead = await tx.lead.update({
+      where: { id },
+      data: { status },
+    });
+
+    if (actorId) {
+      await recordActivityLog(
+        {
+          leadId: id,
+          actorId,
+          type: LeadActivityType.STATUS_CHANGE,
+          details: {
+            from: existingLead.status,
+            to: status,
+          },
+        },
+        tx
+      );
+    }
+
+    return updatedLead;
   });
 }

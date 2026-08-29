@@ -19,28 +19,66 @@ enum Role {
   USER
 }
 
+enum LeadActivityType {
+  STATUS_CHANGE
+  NOTE_ADDED
+}
+
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String?
-  role         Role     @default(ADMIN)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id               String            @id @default(cuid())
+  email            String            @unique
+  passwordHash     String
+  name             String?
+  role             Role              @default(ADMIN)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  authoredNotes    LeadNote[]
+  performedActions LeadActivityLog[]
 
   @@index([email])
 }
 
 model Lead {
-  id              String     @id @default(cuid())
+  id              String            @id @default(cuid())
   name            String
   email           String
   phone           String?
   serviceInterest String?
   message         String?
   consentGiven    Boolean
-  status          LeadStatus @default(NEW)
-  source          String     @default("landing-page")
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  status          LeadStatus        @default(NEW)
+  source          String            @default("landing-page")
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  notes           LeadNote[]
+  activities      LeadActivityLog[]
+}
+
+model LeadNote {
+  id        String   @id @default(cuid())
+  leadId    String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+
+  lead   Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@index([authorId])
+}
+
+model LeadActivityLog {
+  id        String           @id @default(cuid())
+  leadId    String
+  actorId   String?
+  type      LeadActivityType
+  details   Json?
+  createdAt DateTime         @default(now())
+
+  lead  Lead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([leadId])
+  @@index([actorId])
 }
