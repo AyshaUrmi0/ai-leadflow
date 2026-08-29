@@ -1,11 +1,22 @@
 import { NextResponse } from "next/server";
 import { getLeads } from "@/lib/services/lead";
 import { adminLeadsQuerySchema } from "@/lib/validations/lead";
-
-// TODO: Security Notice - Authentication and authorization boundaries must be added before production deployment.
+import { verifySession } from "@/lib/dal";
 
 export async function GET(request: Request) {
   try {
+    // Authorization boundary check
+    const session = await verifySession();
+    if (!session.isAuth) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Unauthorized access.",
+        },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const rawParams = {
       status: searchParams.get("status") || undefined,
