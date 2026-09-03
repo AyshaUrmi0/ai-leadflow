@@ -7,6 +7,8 @@ import { updateLeadStatusAction } from "@/app/admin/leads/actions";
 import { leadStatusValues } from "@/lib/validations/lead";
 import { AddNoteForm } from "@/components/admin/add-note-form";
 import { ActivityTimeline } from "@/components/admin/activity-timeline";
+import { AddTaskForm } from "@/components/admin/add-task-form";
+import { TaskList } from "@/components/admin/task-list";
 
 export interface SerializedLead {
   id: string;
@@ -28,7 +30,7 @@ interface LeadDetailsDrawerProps {
 }
 
 export function LeadDetailsDrawer({ lead, onClose }: LeadDetailsDrawerProps) {
-  const [activeTab, setActiveTab] = useState<"info" | "timeline">("info");
+  const [activeTab, setActiveTab] = useState<"info" | "timeline" | "tasks">("info");
   const [refreshKey, setRefreshKey] = useState<number>(0);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +52,11 @@ export function LeadDetailsDrawer({ lead, onClose }: LeadDetailsDrawerProps) {
 
   if (!lead) return null;
 
+  const handleTabChange = (tab: "info" | "timeline" | "tasks") => {
+    setError(null);
+    setActiveTab(tab);
+  };
+
   const handleStatusChange = (newStatus: LeadStatus) => {
     setError(null);
     startTransition(async () => {
@@ -63,6 +70,14 @@ export function LeadDetailsDrawer({ lead, onClose }: LeadDetailsDrawerProps) {
   };
 
   const handleNoteAdded = () => {
+    setRefreshKey((prev) => prev + 1);
+  };
+
+  const handleTaskCreated = () => {
+    setRefreshKey((prev) => prev + 1);
+  };
+
+  const handleTaskUpdated = () => {
     setRefreshKey((prev) => prev + 1);
   };
 
@@ -111,7 +126,7 @@ export function LeadDetailsDrawer({ lead, onClose }: LeadDetailsDrawerProps) {
                   id="tab-info"
                   aria-selected={activeTab === "info"}
                   aria-controls="panel-info"
-                  onClick={() => setActiveTab("info")}
+                  onClick={() => handleTabChange("info")}
                   className={`pb-2.5 text-xs font-semibold tracking-wide transition-colors ${
                     activeTab === "info"
                       ? "border-b-2 border-teal-700 text-teal-800"
@@ -126,7 +141,7 @@ export function LeadDetailsDrawer({ lead, onClose }: LeadDetailsDrawerProps) {
                   id="tab-timeline"
                   aria-selected={activeTab === "timeline"}
                   aria-controls="panel-timeline"
-                  onClick={() => setActiveTab("timeline")}
+                  onClick={() => handleTabChange("timeline")}
                   className={`pb-2.5 text-xs font-semibold tracking-wide transition-colors ${
                     activeTab === "timeline"
                       ? "border-b-2 border-teal-700 text-teal-800"
@@ -134,6 +149,21 @@ export function LeadDetailsDrawer({ lead, onClose }: LeadDetailsDrawerProps) {
                   }`}
                 >
                   Notes &amp; Activity
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  id="tab-tasks"
+                  aria-selected={activeTab === "tasks"}
+                  aria-controls="panel-tasks"
+                  onClick={() => handleTabChange("tasks")}
+                  className={`pb-2.5 text-xs font-semibold tracking-wide transition-colors ${
+                    activeTab === "tasks"
+                      ? "border-b-2 border-teal-700 text-teal-800"
+                      : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  Tasks &amp; Follow-ups
                 </button>
               </div>
             </div>
@@ -257,6 +287,41 @@ export function LeadDetailsDrawer({ lead, onClose }: LeadDetailsDrawerProps) {
                   </h3>
                   <div className="max-h-[50vh] overflow-y-auto pr-1">
                     <ActivityTimeline leadId={lead.id} refreshKey={refreshKey} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tab Panel 3: Tasks & Follow-ups */}
+            {activeTab === "tasks" && (
+              <div
+                id="panel-tasks"
+                role="tabpanel"
+                aria-labelledby="tab-tasks"
+                className="mt-6 space-y-6"
+              >
+                <div>
+                  <h3 className="text-xs font-semibold text-slate-700 uppercase mb-3">
+                    Add Follow-up Task
+                  </h3>
+                  <AddTaskForm
+                    key={`add-task-${lead.id}`}
+                    leadId={lead.id}
+                    onTaskCreated={handleTaskCreated}
+                  />
+                </div>
+
+                <div className="border-t border-slate-200 pt-4">
+                  <h3 className="text-xs font-semibold text-slate-700 uppercase mb-4">
+                    Follow-up Tasks
+                  </h3>
+                  <div className="max-h-[40vh] overflow-y-auto pr-1">
+                    <TaskList
+                      key={`task-list-${lead.id}-${refreshKey}`}
+                      leadId={lead.id}
+                      refreshKey={refreshKey}
+                      onTaskUpdated={handleTaskUpdated}
+                    />
                   </div>
                 </div>
               </div>
