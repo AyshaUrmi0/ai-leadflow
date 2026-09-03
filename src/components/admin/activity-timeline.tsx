@@ -9,12 +9,24 @@ export interface SerializedActor {
   email: string;
 }
 
+export interface TaskActivityDetails {
+  from?: string;
+  to?: string;
+  noteId?: string;
+  content?: string;
+  taskId?: string;
+  title?: string;
+  dueDate?: string | null;
+  assignedToId?: string | null;
+  assignedToEmail?: string | null;
+}
+
 export interface SerializedActivityLog {
   id: string;
   leadId: string;
   actorId: string | null;
-  type: "STATUS_CHANGE" | "NOTE_ADDED";
-  details: { from?: string; to?: string; noteId?: string; content?: string } | null;
+  type: "STATUS_CHANGE" | "NOTE_ADDED" | "TASK_CREATED" | "TASK_STATUS_CHANGE";
+  details: TaskActivityDetails | null;
   createdAt: string;
   actor?: SerializedActor | null;
 }
@@ -39,13 +51,16 @@ export interface ActivityTimelineProps {
 
 interface MergedTimelineEntry {
   id: string;
-  type: "STATUS_CHANGE" | "NOTE_ADDED";
+  type: "STATUS_CHANGE" | "NOTE_ADDED" | "TASK_CREATED" | "TASK_STATUS_CHANGE";
   createdAt: Date;
   actorName: string;
   actorEmail?: string | null;
   statusFrom?: string;
   statusTo?: string;
   noteContent?: string;
+  taskTitle?: string;
+  taskDueDate?: string | null;
+  taskAssignedToEmail?: string | null;
 }
 
 export function ActivityTimeline({
@@ -133,6 +148,30 @@ export function ActivityTimeline({
         if (matchedNote) {
           notesById.delete(matchedNote.id);
         }
+      } else if (act.type === "TASK_CREATED") {
+        const details = act.details || {};
+        entries.push({
+          id: act.id,
+          type: "TASK_CREATED",
+          createdAt: new Date(act.createdAt),
+          actorName: act.actor?.name || act.actor?.email || "Team Member",
+          actorEmail: act.actor?.email,
+          taskTitle: details.title || "Follow-up Task",
+          taskDueDate: details.dueDate || null,
+          taskAssignedToEmail: details.assignedToEmail || null,
+        });
+      } else if (act.type === "TASK_STATUS_CHANGE") {
+        const details = act.details || {};
+        entries.push({
+          id: act.id,
+          type: "TASK_STATUS_CHANGE",
+          createdAt: new Date(act.createdAt),
+          actorName: act.actor?.name || act.actor?.email || "Team Member",
+          actorEmail: act.actor?.email,
+          taskTitle: details.title || "Follow-up Task",
+          statusFrom: details.from || "PENDING",
+          statusTo: details.to || "COMPLETED",
+        });
       }
     });
 
@@ -194,6 +233,76 @@ export function ActivityTimeline({
     );
   }
 
+  const renderTimelineIcon = (type: MergedTimelineEntry["type"]) => {
+    switch (type) {
+      case "STATUS_CHANGE":
+        return (
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-100 ring-8 ring-white text-teal-800">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+            </svg>
+          </span>
+        );
+      case "NOTE_ADDED":
+        return (
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 ring-8 ring-white text-slate-700">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+            </svg>
+          </span>
+        );
+      case "TASK_CREATED":
+        return (
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 ring-8 ring-white text-blue-800">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </span>
+        );
+      case "TASK_STATUS_CHANGE":
+        return (
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 ring-8 ring-white text-indigo-800">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </span>
+        );
+    }
+  };
+
+  const renderTimelineHeader = (item: MergedTimelineEntry) => {
+    switch (item.type) {
+      case "STATUS_CHANGE":
+        return (
+          <>
+            Status changed from{" "}
+            <span className="font-semibold text-slate-800">{item.statusFrom}</span> to{" "}
+            <span className="font-semibold text-teal-800">{item.statusTo}</span>
+          </>
+        );
+      case "NOTE_ADDED":
+        return (
+          <>
+            Internal Note by <span className="font-semibold text-slate-900">{item.actorName}</span>
+          </>
+        );
+      case "TASK_CREATED":
+        return (
+          <>
+            Created follow-up task: <span className="font-semibold text-slate-900">{item.taskTitle}</span>
+          </>
+        );
+      case "TASK_STATUS_CHANGE":
+        return (
+          <>
+            Task <span className="font-semibold text-slate-900">{item.taskTitle}</span> changed from{" "}
+            <span className="font-semibold text-slate-800">{item.statusFrom?.replace("_", " ")}</span> to{" "}
+            <span className="font-semibold text-teal-800">{item.statusTo?.replace("_", " ")}</span>
+          </>
+        );
+    }
+  };
+
   return (
     <div className="flow-root" aria-label="Lead activity timeline">
       <ul role="list" className="-mb-8">
@@ -209,56 +318,12 @@ export function ActivityTimeline({
                   />
                 )}
                 <div className="relative flex items-start space-x-3">
-                  {item.type === "STATUS_CHANGE" ? (
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-100 ring-8 ring-white text-teal-800">
-                      <svg
-                        className="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth="2"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
-                        />
-                      </svg>
-                    </span>
-                  ) : (
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 ring-8 ring-white text-slate-700">
-                      <svg
-                        className="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth="2"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"
-                        />
-                      </svg>
-                    </span>
-                  )}
+                  {renderTimelineIcon(item.type)}
 
                   <div className="min-w-0 flex-1 pt-1.5">
                     <div className="text-xs text-slate-600 flex items-center justify-between gap-2">
                       <p className="font-medium text-slate-900">
-                        {item.type === "STATUS_CHANGE" ? (
-                          <>
-                            Status changed from{" "}
-                            <span className="font-semibold text-slate-800">{item.statusFrom}</span>{" "}
-                            to{" "}
-                            <span className="font-semibold text-teal-800">{item.statusTo}</span>
-                          </>
-                        ) : (
-                          <>
-                            Internal Note by{" "}
-                            <span className="font-semibold text-slate-900">{item.actorName}</span>
-                          </>
-                        )}
+                        {renderTimelineHeader(item)}
                       </p>
                       <time
                         dateTime={item.createdAt.toISOString()}
@@ -269,17 +334,42 @@ export function ActivityTimeline({
                     </div>
 
                     <div className="mt-1 text-xs text-slate-500">
-                      {item.type === "STATUS_CHANGE" ? (
+                      {item.type === "STATUS_CHANGE" && (
                         <p>
                           Updated by <span className="font-medium text-slate-700">{item.actorName}</span>
                           {item.actorEmail && item.actorEmail !== item.actorName && ` (${item.actorEmail})`}
                         </p>
-                      ) : (
-                        item.noteContent && (
-                          <div className="mt-1.5 rounded-md border border-slate-200 bg-slate-50 p-2.5 text-xs leading-relaxed text-slate-800 whitespace-pre-wrap font-sans">
-                            {item.noteContent}
-                          </div>
-                        )
+                      )}
+                      {item.type === "NOTE_ADDED" && item.noteContent && (
+                        <div className="mt-1.5 rounded-md border border-slate-200 bg-slate-50 p-2.5 text-xs leading-relaxed text-slate-800 whitespace-pre-wrap font-sans">
+                          {item.noteContent}
+                        </div>
+                      )}
+                      {item.type === "TASK_CREATED" && (
+                        <div className="space-y-0.5 text-slate-500">
+                          <p>
+                            Created by <span className="font-medium text-slate-700">{item.actorName}</span>
+                            {item.actorEmail && item.actorEmail !== item.actorName && ` (${item.actorEmail})`}
+                          </p>
+                          {item.taskAssignedToEmail && (
+                            <p>
+                              <strong className="font-medium text-slate-700">Assigned to:</strong>{" "}
+                              {item.taskAssignedToEmail}
+                            </p>
+                          )}
+                          {item.taskDueDate && (
+                            <p>
+                              <strong className="font-medium text-slate-700">Due:</strong>{" "}
+                              {new Date(item.taskDueDate).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      {item.type === "TASK_STATUS_CHANGE" && (
+                        <p>
+                          Updated by <span className="font-medium text-slate-700">{item.actorName}</span>
+                          {item.actorEmail && item.actorEmail !== item.actorName && ` (${item.actorEmail})`}
+                        </p>
                       )}
                     </div>
                   </div>

@@ -22,6 +22,15 @@ enum Role {
 enum LeadActivityType {
   STATUS_CHANGE
   NOTE_ADDED
+  TASK_CREATED
+  TASK_STATUS_CHANGE
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
 }
 
 model User {
@@ -34,6 +43,8 @@ model User {
   updatedAt        DateTime          @updatedAt
   authoredNotes    LeadNote[]
   performedActions LeadActivityLog[]
+  createdTasks     LeadTask[]        @relation("TaskCreator")
+  assignedTasks    LeadTask[]        @relation("TaskAssignee")
 
   @@index([email])
 }
@@ -52,6 +63,7 @@ model Lead {
   updatedAt       DateTime          @updatedAt
   notes           LeadNote[]
   activities      LeadActivityLog[]
+  tasks           LeadTask[]
 }
 
 model LeadNote {
@@ -81,4 +93,26 @@ model LeadActivityLog {
 
   @@index([leadId])
   @@index([actorId])
+}
+
+model LeadTask {
+  id           String     @id @default(cuid())
+  leadId       String
+  creatorId    String
+  assignedToId String?
+  title        String
+  description  String?
+  dueDate      DateTime?
+  status       TaskStatus @default(PENDING)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  lead       Lead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  creator    User  @relation("TaskCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  assignedTo User? @relation("TaskAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([leadId])
+  @@index([creatorId])
+  @@index([assignedToId])
+  @@index([status])
 }
