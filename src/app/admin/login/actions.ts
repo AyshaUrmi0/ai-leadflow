@@ -62,7 +62,7 @@ export async function loginAction(
     await createSession(user.id, user.email, user.role);
 
     // Sanitize callback URL for open redirect prevention
-    let targetRedirect = "/admin/leads";
+    let targetRedirect = "/admin/dashboard";
     if (
       typeof callbackUrlParam === "string" &&
       (callbackUrlParam === "/admin" || callbackUrlParam.startsWith("/admin/"))

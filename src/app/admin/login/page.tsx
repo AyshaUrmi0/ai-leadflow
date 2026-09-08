@@ -7,7 +7,7 @@ import { loginAction, type LoginActionState } from "./actions";
 
 function LoginForm() {
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/admin/leads";
+  const callbackUrl = searchParams.get("callbackUrl") || "/admin/dashboard";
 
   const [state, formAction, isPending] = useActionState<LoginActionState, FormData>(
     loginAction,
