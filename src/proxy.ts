@@ -30,9 +30,9 @@ export default async function proxy(request: NextRequest) {
     );
   }
 
-  // Redirect authenticated admin users away from /admin/login to /admin/leads
+  // Redirect authenticated admin users away from /admin/login to /admin/dashboard
   if (isAdminLoginRoute && isAuthenticated) {
-    return NextResponse.redirect(new URL("/admin/leads", request.url));
+    return NextResponse.redirect(new URL("/admin/dashboard", request.url));
   }
 
   return NextResponse.next();

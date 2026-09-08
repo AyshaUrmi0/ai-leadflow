@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAuthenticatedAdmin } from "@/lib/dal";
-import { logoutAction } from "@/app/admin/login/actions";
 import { getLeads } from "@/lib/services/lead";
 import { LeadsTable } from "@/components/admin/leads-table";
+import { AdminNav } from "@/components/admin/admin-nav";
 import type { LeadStatus } from "@prisma/client";
 import type { SerializedLead } from "@/components/admin/lead-details-drawer";
 
@@ -65,34 +64,7 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      {/* Top Navbar */}
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="text-lg font-semibold tracking-tight text-slate-900">
-              Nova <span className="text-teal-700">Dental</span>
-            </Link>
-            <span className="rounded-md bg-teal-50 px-2 py-0.5 text-xs font-semibold text-teal-800 border border-teal-200">
-              Admin Portal
-            </span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <span className="hidden sm:inline-block text-xs text-slate-600 font-medium">
-              Signed in as <strong className="text-slate-900">{admin.email}</strong>
-            </span>
-
-            <form action={logoutAction}>
-              <button
-                type="submit"
-                className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-teal-700 transition-colors"
-              >
-                Sign Out
-              </button>
-            </form>
-          </div>
-        </div>
-      </header>
+      <AdminNav adminEmail={admin.email} />
 
       {/* Main Container */}
       <main className="mx-auto max-w-7xl px-5 py-8 sm:px-6 lg:px-8">
