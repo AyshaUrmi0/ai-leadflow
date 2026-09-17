@@ -3,12 +3,16 @@
 import { useEffect, useState, useTransition } from "react";
 import type { LeadStatus } from "@prisma/client";
 import { StatusBadge } from "@/components/admin/status-badge";
-import { updateLeadStatusAction } from "@/app/admin/leads/actions";
+import { updateLeadStatusAction, getLeadScoreAction, generateAIIntelligenceAction } from "@/app/admin/leads/actions";
 import { leadStatusValues } from "@/lib/validations/lead";
 import { AddNoteForm } from "@/components/admin/add-note-form";
 import { ActivityTimeline } from "@/components/admin/activity-timeline";
 import { AddTaskForm } from "@/components/admin/add-task-form";
 import { TaskList } from "@/components/admin/task-list";
+import { LeadScoreCard } from "@/components/admin/lead-score-card";
+import { LeadAICard } from "@/components/admin/lead-ai-card";
+import type { LeadScoreResult } from "@/lib/services/scoring";
+import type { LeadIntelligence } from "@/lib/validations/intelligence";
 
 export interface SerializedLead {
   id: string;
@@ -34,6 +38,83 @@ export function LeadDetailsDrawer({ lead, onClose }: LeadDetailsDrawerProps) {
   const [refreshKey, setRefreshKey] = useState<number>(0);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  const [scoreResult, setScoreResult] = useState<LeadScoreResult | null>(null);
+  const [scoreError, setScoreError] = useState<string | null>(null);
+  const [isScorePending, startScoreTransition] = useTransition();
+
+  const leadId = lead?.id;
+  const [prevLeadId, setPrevLeadId] = useState<string | undefined>(leadId);
+  const [aiResult, setAiResult] = useState<LeadIntelligence | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [isAIPending, startAITransition] = useTransition();
+
+  // Reset client-only AI state when switching leads without an effect
+  if (leadId !== prevLeadId) {
+    setPrevLeadId(leadId);
+    setAiResult(null);
+    setAiError(null);
+  }
+
+  const handleGenerateAI = () => {
+    if (!leadId || isAIPending) return;
+    startAITransition(async () => {
+      setAiError(null);
+      try {
+        const res = await generateAIIntelligenceAction(leadId);
+        if (res.success) {
+          setAiResult(res.data);
+        } else {
+          setAiError(res.error || "Could not generate AI insights.");
+        }
+      } catch {
+        setAiError("An error occurred while generating AI insights.");
+      }
+    });
+  };
+
+  const fetchScore = () => {
+    if (!leadId) return;
+    startScoreTransition(async () => {
+      setScoreError(null);
+      try {
+        const res = await getLeadScoreAction(leadId);
+        if (res.success && res.scoreResult) {
+          setScoreResult(res.scoreResult);
+        } else {
+          setScoreError(res.error || "Could not calculate lead score.");
+        }
+      } catch {
+        setScoreError("An error occurred while calculating lead score.");
+      }
+    });
+  };
+
+  useEffect(() => {
+    if (!leadId) return;
+    let isMounted = true;
+
+    startScoreTransition(async () => {
+      setScoreError(null);
+      try {
+        const res = await getLeadScoreAction(leadId);
+        if (!isMounted) return;
+        if (res.success && res.scoreResult) {
+          setScoreResult(res.scoreResult);
+        } else {
+          setScoreError(res.error || "Could not calculate lead score.");
+        }
+      } catch {
+        if (isMounted) {
+          setScoreError("An error occurred while calculating lead score.");
+        }
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [leadId, refreshKey]);
 
   // Close on Escape key press
   useEffect(() => {
@@ -98,9 +179,24 @@ export function LeadDetailsDrawer({ lead, onClose }: LeadDetailsDrawerProps) {
             {/* Header */}
             <div className="flex items-start justify-between border-b border-slate-200 pb-4">
               <div>
-                <p className="text-xs font-semibold tracking-wider text-teal-800 uppercase">
-                  Lead Details
-                </p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-xs font-semibold tracking-wider text-teal-800 uppercase">
+                    Lead Details
+                  </p>
+                  {scoreResult && (
+                    <span
+                      className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold ${
+                        scoreResult.temperature === "HOT"
+                          ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                          : scoreResult.temperature === "WARM"
+                          ? "bg-amber-50 text-amber-800 border-amber-200"
+                          : "bg-slate-100 text-slate-700 border-slate-200"
+                      }`}
+                    >
+                      Score: {scoreResult.score} ({scoreResult.temperature})
+                    </span>
+                  )}
+                </div>
                 <h2 id="drawer-title" className="mt-1 text-2xl font-semibold text-slate-950">
                   {lead.name}
                 </h2>
@@ -180,8 +276,25 @@ export function LeadDetailsDrawer({ lead, onClose }: LeadDetailsDrawerProps) {
                 id="panel-info"
                 role="tabpanel"
                 aria-labelledby="tab-info"
-                className="mt-6 space-y-5 text-sm text-slate-700"
+                className="mt-6 space-y-6 text-sm text-slate-700"
               >
+                {/* Lead Intelligence & Score */}
+                <LeadScoreCard
+                  scoreResult={scoreResult}
+                  isLoading={isScorePending && !scoreResult}
+                  error={scoreError}
+                  onRetry={fetchScore}
+                />
+
+                {/* AI Advisory Insights (On-Demand Only) */}
+                <LeadAICard
+                  data={aiResult}
+                  isLoading={isAIPending}
+                  error={aiError}
+                  onGenerate={handleGenerateAI}
+                  onRetry={handleGenerateAI}
+                />
+
                 {/* Status Update */}
                 <div>
                   <label htmlFor="drawer-status" className="block text-xs font-semibold text-slate-500 uppercase">

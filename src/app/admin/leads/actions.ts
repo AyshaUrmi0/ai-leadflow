@@ -8,6 +8,7 @@ import { createLeadNote, getLeadNotes } from "@/lib/services/note";
 import { getLeadActivityTimeline } from "@/lib/services/activity";
 import { createLeadTask, getLeadTasks, updateLeadTaskStatus } from "@/lib/services/task";
 import { getAdminUsers } from "@/lib/services/user";
+import { getLeadScoreData, getLeadAIIntelligence } from "@/lib/services/intelligence";
 import { verifySession } from "@/lib/dal";
 import { revalidatePath } from "next/cache";
 
@@ -363,6 +364,78 @@ export async function getAdminUsersAction() {
       success: false,
       error: "An unexpected error occurred while loading admin users.",
       users: [],
+    };
+  }
+}
+
+export async function getLeadScoreAction(leadId: string) {
+  // Authorization boundary check
+  const session = await verifySession();
+  if (!session.isAuth || !session.userId) {
+    return {
+      success: false,
+      error: "Unauthorized: You must be logged in as an admin to perform this action.",
+      scoreResult: null,
+    };
+  }
+
+  if (!leadId || typeof leadId !== "string" || leadId.trim().length === 0) {
+    return {
+      success: false,
+      error: "Invalid lead ID.",
+      scoreResult: null,
+    };
+  }
+
+  try {
+    const scoreResult = await getLeadScoreData(leadId.trim());
+    if (!scoreResult) {
+      return {
+        success: false,
+        error: "Lead not found.",
+        scoreResult: null,
+      };
+    }
+
+    return {
+      success: true,
+      scoreResult,
+    };
+  } catch (error) {
+    console.error("Failed to fetch lead score:", error);
+    return {
+      success: false,
+      error: "An unexpected error occurred while calculating lead score.",
+      scoreResult: null,
+    };
+  }
+}
+
+export async function generateAIIntelligenceAction(leadId: string) {
+  // Authorization boundary check
+  const session = await verifySession();
+  if (!session.isAuth || !session.userId) {
+    return {
+      success: false as const,
+      error: "Unauthorized: You must be logged in as an admin to perform this action.",
+    };
+  }
+
+  if (!leadId || typeof leadId !== "string" || leadId.trim().length === 0) {
+    return {
+      success: false as const,
+      error: "Invalid lead ID.",
+    };
+  }
+
+  try {
+    const result = await getLeadAIIntelligence(leadId.trim());
+    return result;
+  } catch (error) {
+    console.error("Failed to generate AI intelligence:", error);
+    return {
+      success: false as const,
+      error: "An unexpected error occurred while generating AI intelligence.",
     };
   }
 }
