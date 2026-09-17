@@ -13,6 +13,23 @@ jobs:
     env:
       DATABASE_URL: "postgresql://demo:demo@localhost:5432/demo"
       SESSION_SECRET: "12345678901234567890123456789012"
+      ADMIN_INITIAL_EMAIL: "admin@novadental.com"
+      ADMIN_INITIAL_PASSWORD: "ci-test-password"
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: demo
+          POSTGRES_PASSWORD: demo
+          POSTGRES_DB: demo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Check out repository
@@ -35,11 +52,20 @@ jobs:
       - name: Generate Prisma Client
         run: pnpm exec prisma generate
 
+      - name: Apply database migrations
+        run: pnpm exec prisma migrate deploy
+
+      - name: Seed database
+        run: pnpm exec prisma db seed
+
       - name: Lint
         run: pnpm lint
 
       - name: Type check
         run: pnpm exec tsc --noEmit
+
+      - name: Test
+        run: pnpm test
 
       - name: Build
         run: pnpm build
