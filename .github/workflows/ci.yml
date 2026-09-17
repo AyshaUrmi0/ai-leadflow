@@ -10,6 +10,10 @@ jobs:
   verify:
     runs-on: ubuntu-latest
 
+    env:
+      DATABASE_URL: "postgresql://demo:demo@localhost:5432/demo"
+      SESSION_SECRET: "12345678901234567890123456789012"
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -27,6 +31,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm exec prisma generate
 
       - name: Lint
         run: pnpm lint
