@@ -136,6 +136,17 @@ function LoginForm() {
             "Sign In"
           )}
         </button>
+
+        {/* Register Link */}
+        <div className="text-center text-xs text-slate-400">
+          Don&apos;t have an account?{" "}
+          <Link
+            href="/register"
+            className="font-medium text-teal-400 hover:text-teal-300 hover:underline transition-colors"
+          >
+            Create one
+          </Link>
+        </div>
       </form>
 
       {/* Recruiter Demo Access Section */}
@@ -271,10 +282,10 @@ export default function AdminLoginPage() {
           Nova <span className="text-teal-400">Dental</span>
         </Link>
         <h1 className="mt-4 text-2xl font-semibold tracking-tight text-slate-100">
-          Admin Portal Sign In
+          Sign In to Your Account
         </h1>
         <p className="mt-2 text-sm text-slate-400">
-          Internal access for lead management and patient inquiries.
+          Access your consultations, patient portal, or admin workspace.
         </p>
       </div>
 

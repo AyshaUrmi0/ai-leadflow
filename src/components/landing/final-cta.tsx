@@ -1,6 +1,15 @@
 import { LeadForm } from "@/components/landing/lead-form";
 
-export function FinalCTA() {
+interface FinalCTAProps {
+  user?: {
+    id: string;
+    email: string;
+    role: string;
+    name?: string | null;
+  } | null;
+}
+
+export function FinalCTA({ user }: FinalCTAProps = {}) {
   return (
     <section id="contact" className="bg-teal-800 py-20 sm:py-24">
       <div className="mx-auto max-w-3xl px-5 sm:px-6 lg:px-8">
@@ -17,7 +26,7 @@ export function FinalCTA() {
           </p>
         </div>
         <div className="mt-10">
-          <LeadForm />
+          <LeadForm user={user} />
         </div>
       </div>
     </section>

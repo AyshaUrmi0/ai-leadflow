@@ -75,10 +75,10 @@ export default async function UserPortalPage() {
     redirect("/admin/login?callbackUrl=/portal");
   }
 
-  // Server-side user data isolation: fetch leads matching this user's verified account email
+  // Server-side user data isolation: userId is the authoritative source of truth for lead ownership
   const consultations = await prisma.lead.findMany({
     where: {
-      email: user.email,
+      userId: user.id,
     },
     orderBy: { createdAt: "desc" },
     select: {

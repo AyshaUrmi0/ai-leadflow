@@ -9,6 +9,40 @@ try {
   } as NodeModule;
 } catch {}
 
+const mockCookiesStore = new Map<string, any>();
+try {
+  const nextHeadersPath = require.resolve("next/headers");
+  require.cache[nextHeadersPath] = {
+    id: nextHeadersPath,
+    filename: nextHeadersPath,
+    loaded: true,
+    exports: {
+      cookies: async () => ({
+        get: (name: string) => mockCookiesStore.get(name),
+        set: (name: string, value: string, options: any) =>
+          mockCookiesStore.set(name, { value, ...options }),
+        delete: (name: string) => mockCookiesStore.delete(name),
+      }),
+    },
+  } as NodeModule;
+} catch {}
+
+try {
+  const nextNavPath = require.resolve("next/navigation");
+  require.cache[nextNavPath] = {
+    id: nextNavPath,
+    filename: nextNavPath,
+    loaded: true,
+    exports: {
+      redirect: (url: string) => {
+        const err = new Error("NEXT_REDIRECT");
+        (err as any).url = url;
+        throw err;
+      },
+    },
+  } as NodeModule;
+} catch {}
+
 import type { SessionPayload } from "../src/lib/auth/session";
 
 let passedCount = 0;
@@ -249,34 +283,57 @@ async function runTests() {
   const validUserResult = simulateDemoLogin("USER", { USER_INITIAL_PASSWORD: "ConfiguredUserPass123!" });
   assert(validUserResult.success === true, "Configured USER_INITIAL_PASSWORD succeeds");
 
-  // 7. User Data Isolation by Verified Account Email
-  console.log("\n7. Testing User Data Isolation & Ownership Enforcement...");
+  // 7. User Data Isolation by Authoritative userId
+  console.log("\n7. Testing User Data Isolation & Ownership Enforcement by userId...");
   interface MockLead {
     id: string;
+    userId: string | null;
     email: string;
     status: string;
   }
 
+  const userA = { id: "user_a_123", email: "shared@example.com", role: "USER" };
+  const userB = { id: "user_b_456", email: "shared@example.com", role: "USER" };
+
   const mockLeadsDatabase: MockLead[] = [
-    { id: "lead_1", email: "user@novadental.com", status: "NEW" },
-    { id: "lead_2", email: "other@example.com", status: "NEW" },
-    { id: "lead_3", email: "anon@example.com", status: "NEW" },
+    { id: "lead_user_a", userId: userA.id, email: userA.email, status: "NEW" },
+    { id: "lead_user_b", userId: userB.id, email: userB.email, status: "NEW" },
+    { id: "lead_other_b", userId: userB.id, email: "other_b@example.com", status: "CONTACTED" },
+    { id: "lead_anonymous", userId: null, email: userA.email, status: "NEW" },
   ];
 
-  function queryUserConsultations(user: { email: string }) {
-    return mockLeadsDatabase.filter((lead) => lead.email === user.email);
+  // User portal queries strictly by userId
+  function queryUserConsultations(user: { id: string }) {
+    return mockLeadsDatabase.filter((lead) => lead.userId === user.id);
   }
 
-  const userConsultations = queryUserConsultations({ email: "user@novadental.com" });
-  assert(userConsultations.length === 1, "User retrieves exactly their own consultation matching verified email");
-  assert(userConsultations[0].id === "lead_1", "User consultation has expected ID");
+  // Admin query sees all leads
+  function queryAdminLeads() {
+    return mockLeadsDatabase;
+  }
+
+  const userAConsultations = queryUserConsultations(userA);
   assert(
-    !userConsultations.some((l) => l.email === "other@example.com"),
-    "User CANNOT see another user's consultation"
+    userAConsultations.length === 1 && userAConsultations[0].id === "lead_user_a",
+    "1. User A sees their own lead (lead_user_a)"
   );
   assert(
-    !userConsultations.some((l) => l.email === "anon@example.com"),
-    "User CANNOT see unrelated anonymous consultations"
+    !userAConsultations.some((l) => l.id === "lead_other_b"),
+    "2. User A cannot see User B's lead (lead_other_b)"
+  );
+  assert(
+    !userAConsultations.some((l) => l.id === "lead_user_b"),
+    "3. User A cannot see User B's lead even though it has the same email (lead_user_b)"
+  );
+  assert(
+    !userAConsultations.some((l) => l.id === "lead_anonymous"),
+    "4. User A cannot see an unrelated anonymous lead where userId is null even if email matches"
+  );
+
+  const adminLeads = queryAdminLeads();
+  assert(
+    adminLeads.length === 4,
+    "5. Existing admin lead visibility continues to see all leads regardless of userId"
   );
 
   // 8. Customer-Facing Status Mapping
@@ -327,6 +384,309 @@ async function runTests() {
   }
   simulateLogout();
   assert(activeCookie === null, "Logout action clears the active session cookie");
+
+  // 11. User Registration Flow & Security Verification
+  console.log("\n11. Testing User Registration Flow & Security...");
+  const { registerAction } = await import("../src/app/admin/login/actions");
+  const { prisma } = await import("../src/lib/prisma");
+
+  const uniqueId = Date.now();
+  const testRegEmail = `test_reg_${uniqueId}@example.com`;
+  const testRegPassword = "TestRegistrationPassword123!";
+  const testRegName = "New Registered Patient";
+  const testEscalationEmail = `test_escalation_${uniqueId}@example.com`;
+
+  try {
+    // 11.1 Invalid input validation
+    console.log("  Testing invalid input handling...");
+    const emptyNameForm = new FormData();
+    emptyNameForm.append("name", "   ");
+    emptyNameForm.append("email", testRegEmail);
+    emptyNameForm.append("password", testRegPassword);
+    const emptyNameRes = await registerAction(undefined, emptyNameForm);
+    assert(
+      emptyNameRes.success === false && Boolean(emptyNameRes.fieldErrors?.name?.length),
+      "Registration rejects empty/whitespace name with field error"
+    );
+
+    const invalidEmailForm = new FormData();
+    invalidEmailForm.append("name", testRegName);
+    invalidEmailForm.append("email", "not-an-email");
+    invalidEmailForm.append("password", testRegPassword);
+    const invalidEmailRes = await registerAction(undefined, invalidEmailForm);
+    assert(
+      invalidEmailRes.success === false && Boolean(invalidEmailRes.fieldErrors?.email?.length),
+      "Registration rejects malformed email with field error"
+    );
+
+    const shortPasswordForm = new FormData();
+    shortPasswordForm.append("name", testRegName);
+    shortPasswordForm.append("email", testRegEmail);
+    shortPasswordForm.append("password", "short");
+    const shortPasswordRes = await registerAction(undefined, shortPasswordForm);
+    assert(
+      shortPasswordRes.success === false && Boolean(shortPasswordRes.fieldErrors?.password?.length),
+      "Registration rejects password shorter than 8 characters with field error"
+    );
+
+    // 11.2 Successful registration
+    console.log("  Testing successful registration...");
+    const validForm = new FormData();
+    validForm.append("name", testRegName);
+    validForm.append("email", testRegEmail);
+    validForm.append("password", testRegPassword);
+
+    let redirectTarget: string | null = null;
+    try {
+      await registerAction(undefined, validForm);
+    } catch (e: any) {
+      if (e.message === "NEXT_REDIRECT") {
+        redirectTarget = e.url;
+      } else {
+        throw e;
+      }
+    }
+
+    assert(redirectTarget === "/portal", "Successful registration redirects to /portal");
+
+    const createdUser = await prisma.user.findUnique({
+      where: { email: testRegEmail },
+    });
+    assert(createdUser !== null, "User record is persisted in the database");
+    assert(createdUser?.name === testRegName, "Stored user name matches registration input");
+    assert(createdUser?.role === "USER", "Newly registered user role is strictly 'USER'");
+    assert(
+      createdUser?.passwordHash !== testRegPassword,
+      "Stored password is not the plaintext password"
+    );
+
+    const isPasswordValid = await verifyPassword(testRegPassword, createdUser!.passwordHash);
+    assert(isPasswordValid === true, "Stored password hash verifies successfully with verifyPassword");
+
+    // 11.3 Session creation verification
+    console.log("  Testing registration session creation...");
+    const sessionCookieObj = mockCookiesStore.get("admin_session");
+    assert(Boolean(sessionCookieObj?.value), "Session cookie 'admin_session' was set upon registration");
+    const decryptedRegSession = await decryptSession(sessionCookieObj?.value);
+    assert(decryptedRegSession !== null, "Registered user session decrypts successfully");
+    assert(decryptedRegSession?.userId === createdUser?.id, "Session userId matches created user ID");
+    assert(decryptedRegSession?.email === testRegEmail, "Session email matches registered email");
+    assert(decryptedRegSession?.role === "USER", "Session role is USER");
+
+    // 11.4 Duplicate email registration prevention
+    console.log("  Testing duplicate email prevention...");
+    const duplicateForm = new FormData();
+    duplicateForm.append("name", "Another User");
+    duplicateForm.append("email", testRegEmail);
+    duplicateForm.append("password", "DifferentPassword123!");
+
+    const duplicateRes = await registerAction(undefined, duplicateForm);
+    assert(duplicateRes.success === false, "Registration with duplicate email is rejected");
+    assert(
+      duplicateRes.error === "An account with this email address already exists.",
+      "Duplicate email returns safe generic error without leaking existing role"
+    );
+
+    const userCount = await prisma.user.count({ where: { email: testRegEmail } });
+    assert(userCount === 1, "Duplicate registration attempt does not create a second user record");
+
+    // 11.5 Role escalation protection
+    console.log("  Testing role escalation protection...");
+    const escalationForm = new FormData();
+    escalationForm.append("name", "Attacker Trying Admin");
+    escalationForm.append("email", testEscalationEmail);
+    escalationForm.append("password", "AttackPassword123!");
+    escalationForm.append("role", "ADMIN");
+
+    let escalationRedirect: string | null = null;
+    try {
+      await registerAction(undefined, escalationForm);
+    } catch (e: any) {
+      if (e.message === "NEXT_REDIRECT") {
+        escalationRedirect = e.url;
+      } else {
+        throw e;
+      }
+    }
+
+    assert(escalationRedirect === "/portal", "Escalation attempt redirects to /portal");
+    const escalatedUser = await prisma.user.findUnique({
+      where: { email: testEscalationEmail },
+    });
+    assert(escalatedUser !== null, "User with escalation attempt was created");
+    assert(
+      escalatedUser?.role === "USER",
+      "User role is strictly 'USER' despite client passing role=ADMIN"
+    );
+  } finally {
+    // Test cleanup: Remove test users so the database remains deterministic
+    console.log("  Cleaning up registration test records...");
+    await prisma.user.deleteMany({
+      where: {
+        email: {
+          in: [testRegEmail, testEscalationEmail],
+        },
+      },
+    });
+    mockCookiesStore.clear();
+  }
+
+  // 12. Consultation Submission API & Security Verification (POST /api/leads)
+  console.log("\n12. Testing Consultation Submission API (POST /api/leads)...");
+  const { POST: postLead } = await import("../src/app/api/leads/route");
+
+  const testConsultationUserEmail = `test_consult_${uniqueId}@example.com`;
+  const testConsultationAdminEmail = `test_admin_consult_${uniqueId}@example.com`;
+  let createdLeadId: string | null = null;
+
+  try {
+    // Create test USER and ADMIN in DB
+    const createdPatientUser = await prisma.user.create({
+      data: {
+        email: testConsultationUserEmail,
+        name: "Test Consultation Patient",
+        passwordHash: await hashPassword("ValidPassword123!"),
+        role: "USER",
+      },
+    });
+
+    const createdAdminUser = await prisma.user.create({
+      data: {
+        email: testConsultationAdminEmail,
+        name: "Test Consultation Admin",
+        passwordHash: await hashPassword("ValidPassword123!"),
+        role: "ADMIN",
+      },
+    });
+
+    function createJsonRequest(body: any): Request {
+      return new Request("http://localhost:3000/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    }
+
+    const validLeadPayload = {
+      name: "Test Consultation Patient",
+      email: testConsultationUserEmail,
+      phone: "555-0199",
+      serviceInterest: "Cosmetic consultations",
+      message: "Looking for consultation on veneers.",
+      consentGiven: true,
+    };
+
+    // 12.1 Unauthenticated POST /api/leads is rejected
+    console.log("  Testing unauthenticated consultation submission rejection...");
+    mockCookiesStore.clear();
+    const unauthResponse = await postLead(createJsonRequest(validLeadPayload));
+    assert(
+      unauthResponse.status === 401,
+      "Unauthenticated POST /api/leads is rejected with 401"
+    );
+    const unauthJson = await unauthResponse.json();
+    assert(
+      unauthJson.success === false,
+      "Unauthenticated response returns success: false"
+    );
+
+    // 12.2 ADMIN cannot create customer consultation through this endpoint
+    console.log("  Testing ADMIN consultation submission rejection...");
+    const adminToken = await encryptSession({
+      userId: createdAdminUser.id,
+      email: createdAdminUser.email,
+      role: "ADMIN",
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+    mockCookiesStore.set("admin_session", { value: adminToken });
+
+    const adminResponse = await postLead(createJsonRequest(validLeadPayload));
+    assert(
+      adminResponse.status === 401,
+      "ADMIN POST /api/leads is rejected with 401"
+    );
+    const adminJson = await adminResponse.json();
+    assert(
+      adminJson.success === false,
+      "ADMIN consultation attempt returns success: false"
+    );
+
+    // 12.3 Existing validation still works
+    console.log("  Testing input validation for authenticated USER...");
+    const userToken = await encryptSession({
+      userId: createdPatientUser.id,
+      email: createdPatientUser.email,
+      role: "USER",
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+    mockCookiesStore.set("admin_session", { value: userToken });
+
+    const invalidPayload = {
+      ...validLeadPayload,
+      email: "invalid-email-format",
+      consentGiven: false,
+    };
+    const invalidResponse = await postLead(createJsonRequest(invalidPayload));
+    assert(
+      invalidResponse.status === 400,
+      "Invalid lead payload is rejected with 400"
+    );
+    const invalidJson = await invalidResponse.json();
+    assert(
+      invalidJson.success === false && Boolean(invalidJson.errors),
+      "Invalid lead payload returns field validation errors"
+    );
+
+    // 12.4 Authenticated USER can create a lead & client-provided userId cannot override
+    console.log("  Testing authenticated USER submission & userId spoofing prevention...");
+    const spoofAttemptPayload = {
+      ...validLeadPayload,
+      userId: "malicious_spoofed_user_id_999",
+    };
+    const successResponse = await postLead(createJsonRequest(spoofAttemptPayload));
+    assert(
+      successResponse.status === 201,
+      "Authenticated USER can successfully submit a consultation (201)"
+    );
+    const successJson = await successResponse.json();
+    assert(
+      successJson.success === true,
+      "Successful submission returns success: true"
+    );
+
+    // 12.5 Verify created lead in database
+    const createdLead = await prisma.lead.findFirst({
+      where: { email: testConsultationUserEmail },
+      orderBy: { createdAt: "desc" },
+    });
+    assert(createdLead !== null, "Created lead exists in database");
+    if (createdLead) {
+      createdLeadId = createdLead.id;
+    }
+    assert(
+      createdLead?.userId === createdPatientUser.id,
+      "Created lead has userId strictly matching authenticated user's ID"
+    );
+    assert(
+      createdLead?.userId !== "malicious_spoofed_user_id_999",
+      "Client-provided userId cannot override authenticated user ID"
+    );
+  } finally {
+    console.log("  Cleaning up consultation test records...");
+    if (createdLeadId) {
+      await prisma.lead.deleteMany({
+        where: { id: createdLeadId },
+      });
+    }
+    await prisma.user.deleteMany({
+      where: {
+        email: {
+          in: [testConsultationUserEmail, testConsultationAdminEmail],
+        },
+      },
+    });
+    mockCookiesStore.clear();
+  }
 
   console.log("\n==================================================");
   console.log(`Results: ${passedCount}/${totalCount} tests passed cleanly.`);

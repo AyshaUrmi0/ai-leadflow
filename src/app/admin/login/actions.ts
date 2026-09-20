@@ -1,7 +1,7 @@
 "use server";
 
-import { loginSchema } from "@/lib/validations/auth";
-import { verifyPassword } from "@/lib/auth/password";
+import { loginSchema, registerSchema } from "@/lib/validations/auth";
+import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession, deleteSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
@@ -10,6 +10,16 @@ export interface LoginActionState {
   success?: boolean;
   error?: string;
   fieldErrors?: {
+    email?: string[];
+    password?: string[];
+  };
+}
+
+export interface RegisterActionState {
+  success?: boolean;
+  error?: string;
+  fieldErrors?: {
+    name?: string[];
     email?: string[];
     password?: string[];
   };
@@ -121,4 +131,67 @@ export async function demoLoginAction(role: "ADMIN" | "USER"): Promise<LoginActi
 export async function logoutAction() {
   await deleteSession();
   redirect("/admin/login");
+}
+
+export async function registerAction(
+  _prevState: RegisterActionState | undefined,
+  formData: FormData
+): Promise<RegisterActionState> {
+  const rawName = formData.get("name");
+  const rawEmail = formData.get("email");
+  const rawPassword = formData.get("password");
+
+  const validationResult = registerSchema.safeParse({
+    name: rawName,
+    email: rawEmail,
+    password: rawPassword,
+  });
+
+  if (!validationResult.success) {
+    return {
+      success: false,
+      error: "Please correct the errors in the form.",
+      fieldErrors: validationResult.error.flatten().fieldErrors,
+    };
+  }
+
+  const { name, email, password } = validationResult.data;
+
+  try {
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      return {
+        success: false,
+        error: "An account with this email address already exists.",
+      };
+    }
+
+    const passwordHash = await hashPassword(password);
+
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        passwordHash,
+        role: "USER",
+      },
+    });
+
+    await createSession(user.id, user.email, user.role);
+
+    redirect("/portal");
+  } catch (error) {
+    if (error instanceof Error && error.message === "NEXT_REDIRECT") {
+      throw error;
+    }
+
+    console.error("Unhandled error during registration:", error);
+    return {
+      success: false,
+      error: "An unexpected error occurred during registration. Please try again.",
+    };
+  }
 }
