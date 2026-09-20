@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx tests/ai-infrastructure.ts && tsx tests/ai-lead-intelligence.ts"
+    "test": "tsx tests/ai-infrastructure.ts && tsx tests/ai-lead-intelligence.ts && tsx tests/authentication.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

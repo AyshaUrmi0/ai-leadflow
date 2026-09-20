@@ -59,3 +59,30 @@ export const getAuthenticatedAdmin = cache(async () => {
     return null;
   }
 });
+
+export const getAuthenticatedUser = cache(async () => {
+  const token = await getSessionCookie();
+  const session: SessionPayload | null = await decryptSession(token);
+
+  if (!session || !session.userId) {
+    return null;
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: session.userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+
+    return user;
+  } catch (error) {
+    console.error("Failed to fetch authenticated user:", error);
+    return null;
+  }
+});

@@ -268,7 +268,7 @@ The project uses an automated verification strategy executed via `tsx`:
 pnpm test
 ```
 
-The test runner executes two comprehensive verification suites containing **73 automated checks**:
+The test runner executes three comprehensive verification suites containing **122 automated checks**:
 
 1. **AI Infrastructure Suite (`tests/ai-infrastructure.ts` - 39 checks):**
    * Input boundary data shaping and sanitization.
@@ -292,6 +292,18 @@ The test runner executes two comprehensive verification suites containing **73 a
    * Client/server boundary verification (confirming UI components do not import OpenAI).
    * Database immutability verification (confirming lead, note, task, and activity log counts remain unchanged after AI analysis).
 
+3. **Authentication & Authorization Suite (`tests/authentication.ts` - 49 checks):**
+   * bcryptjs password hashing and verification with 12 salt rounds.
+   * jose cryptographic JWT session creation and validation.
+   * Session payload tampering and invalid token rejection.
+   * Data Access Layer (DAL) role boundaries (`ADMIN` authorized, `USER` blocked from admin operations).
+   * Route proxy policy verification (`/admin/*` blocks `USER`, `/portal/*` requires auth, `/api/admin/*` returns 401).
+   * Demo account credential resolution, missing environment variable handling, and role separation.
+   * User data isolation by verified account email (User A query never returns User B's consultations or unrelated records).
+   * Customer-facing status mapping (`NEW`, `CONTACTED`, `QUALIFIED`, `CLOSED_LOST`).
+   * Admin status update propagation to user portal view.
+   * Logout session deletion.
+
 ### Continuous Integration (GitHub Actions)
 
 Every push and pull request to `main` triggers `.github/workflows/ci.yml`:
@@ -303,7 +315,7 @@ Every push and pull request to `main` triggers `.github/workflows/ci.yml`:
 * Seeds the database with reproducible demo data (`prisma db seed`).
 * Runs static code analysis (`pnpm lint` via ESLint).
 * Performs TypeScript type checking (`pnpm exec tsc --noEmit`).
-* Executes all 73 automated verification checks (`pnpm test`).
+* Executes all 122 automated verification checks (`pnpm test`).
 * Compiles the production Next.js application (`pnpm build`).
 
 ---
@@ -318,23 +330,24 @@ ai-leadflow/
 ├── prisma/
 │   ├── migrations/              # PostgreSQL schema migrations
 │   ├── schema.prisma            # Prisma relational data models
-│   └── seed.ts                  # Idempotent database seed script
+│   └── seed.ts                  # Idempotent database seed script (Admin & User)
 ├── public/                      # Static assets and icons
 ├── src/
 │   ├── app/
 │   │   ├── admin/
 │   │   │   ├── dashboard/       # Lead intelligence overview & metrics
 │   │   │   ├── leads/           # Leads management table & server actions
-│   │   │   ├── login/           # Admin authentication page & actions
+│   │   │   ├── login/           # Multi-role authentication page with demo access
 │   │   │   └── page.tsx         # /admin redirect to /admin/dashboard
 │   │   ├── api/
 │   │   │   └── leads/           # Public consultation capture endpoint
+│   │   ├── portal/              # Patient/user workspace & consultation status
 │   │   ├── layout.tsx           # Root HTML layout with Geist font
 │   │   ├── page.tsx             # Nova Dental public landing page
-│   │   └── proxy.ts             # Route protection middleware
+│   │   └── proxy.ts             # Next.js 16 route protection & role proxy
 │   ├── components/
 │   │   ├── admin/               # Admin dashboard, drawer, score & AI cards
-│   │   └── landing/             # Public landing page sections & lead form
+│   │   └── landing/             # Public landing page sections, navbar & lead form
 │   └── lib/
 │       ├── ai/
 │       │   ├── prompts.ts       # Prompt builder with XML injection defense
@@ -354,11 +367,12 @@ ai-leadflow/
 │       │   ├── task.ts          # Follow-up task creation & status updates
 │       │   └── user.ts          # Admin user query helpers
 │       ├── validations/         # Zod schemas (auth, lead, note, task, AI)
-│       ├── dal.ts               # Data Access Layer (verifySession)
+│       ├── dal.ts               # Data Access Layer (verifySession, getAuthenticatedUser)
 │       └── prisma.ts            # Global PrismaClient singleton
 ├── tests/
 │   ├── ai-infrastructure.ts     # 39 AI infrastructure verification checks
-│   └── ai-lead-intelligence.ts  # 34 integration and safety checks
+│   ├── ai-lead-intelligence.ts  # 34 integration and safety checks
+│   └── authentication.ts        # 49 auth, role & portal workflow checks
 ├── .env.example                 # Documented environment variable template
 ├── package.json                 # Dependencies, scripts, and package manager config
 ├── tsconfig.json                # TypeScript compiler configuration
@@ -394,8 +408,12 @@ Edit `.env` and provide your database connection string and a random 32-characte
 ```bash
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/ai_leadflow"
 SESSION_SECRET="your-secure-random-32-character-secret-key"
+
+# Evaluation demo accounts seeded by prisma/seed.ts:
 ADMIN_INITIAL_EMAIL="admin@novadental.com"
 ADMIN_INITIAL_PASSWORD="SecureAdminPassword123!"
+USER_INITIAL_EMAIL="user@novadental.com"
+USER_INITIAL_PASSWORD="DemoUserPassword123!"
 
 # Optional: Required only for generating live AI insights
 OPENAI_API_KEY="sk-..."
@@ -417,7 +435,14 @@ pnpm exec prisma db seed
 ```bash
 pnpm dev
 ```
-Open [http://localhost:3000](http://localhost:3000) to view the Nova Dental landing page, or visit [http://localhost:3000/admin](http://localhost:3000/admin) to log in with the seeded admin credentials (`admin@novadental.com` / `SecureAdminPassword123!`).
+Open [http://localhost:3000](http://localhost:3000) to view the Nova Dental landing page, or visit [http://localhost:3000/admin/login](http://localhost:3000/admin/login) to evaluate the application.
+
+#### Recruiter & Evaluator Demo Access
+On the login page, you can use one-click buttons to evaluate both system roles without manually typing credentials:
+* **Login as Admin Demo** (`admin@novadental.com`): Grants access to `/admin/dashboard`, `/admin/leads`, lead scoring, follow-up workflows, and AI lead intelligence.
+* **Login as User Demo** (`user@novadental.com`): Grants access to the `/portal` patient workspace with live consultation status. Demonstrates role-based route protection—attempting to navigate to `/admin/*` will be actively blocked by the server-side proxy and Data Access Layer.
+
+> **Security Note:** Demo buttons do not bypass authentication. They call the same server-side authentication pipeline as the manual login form (Zod validation, database lookup, bcrypt hash verification, and HttpOnly JWT cookie generation). No passwords or secrets are stored in `localStorage` or exposed to the client.
 
 ### 7. Run Verification Tests
 ```bash
@@ -446,6 +471,8 @@ pnpm build
 | `SESSION_SECRET` | Yes (Prod) | 32+ character random secret for JWT signing | `c9f8a...32chars` |
 | `ADMIN_INITIAL_EMAIL` | Optional | Default admin email used by `prisma/seed.ts` | `admin@novadental.com` |
 | `ADMIN_INITIAL_PASSWORD`| Yes (Seed) | Default admin password used by `prisma/seed.ts` | `SecureAdminPassword123!` |
+| `USER_INITIAL_EMAIL` | Optional | Default user email used by `prisma/seed.ts` | `user@novadental.com` |
+| `USER_INITIAL_PASSWORD` | Yes (Seed) | Default user password used by `prisma/seed.ts` | `DemoUserPassword123!` |
 | `OPENAI_API_KEY` | Optional | OpenAI API key for on-demand AI lead analysis | `sk-...` |
 
 > **Security Note:** All variables are strictly server-side. Never prefix secret keys with `NEXT_PUBLIC_` and never commit `.env` files to source control.
