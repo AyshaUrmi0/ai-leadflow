@@ -43,7 +43,7 @@ export async function loginAction(
       where: { email },
     });
 
-    if (!user || user.role !== "ADMIN") {
+    if (!user) {
       return {
         success: false,
         error: "Invalid email or password.",
@@ -61,15 +61,21 @@ export async function loginAction(
 
     await createSession(user.id, user.email, user.role);
 
-    // Sanitize callback URL for open redirect prevention
-    let targetRedirect = "/admin/dashboard";
+    // Role-aware redirect with open-redirect prevention
+    let targetRedirect = user.role === "ADMIN" ? "/admin/dashboard" : "/portal";
     if (
+      user.role === "ADMIN" &&
       typeof callbackUrlParam === "string" &&
       (callbackUrlParam === "/admin" || callbackUrlParam.startsWith("/admin/"))
     ) {
       targetRedirect = callbackUrlParam;
+    } else if (
+      user.role === "USER" &&
+      typeof callbackUrlParam === "string" &&
+      (callbackUrlParam === "/portal" || callbackUrlParam.startsWith("/portal/"))
+    ) {
+      targetRedirect = callbackUrlParam;
     }
-
 
     redirect(targetRedirect);
   } catch (error) {
@@ -84,6 +90,32 @@ export async function loginAction(
       error: "An unexpected error occurred during login. Please try again.",
     };
   }
+}
+
+export async function demoLoginAction(role: "ADMIN" | "USER"): Promise<LoginActionState> {
+  const email =
+    role === "ADMIN"
+      ? process.env.ADMIN_INITIAL_EMAIL || "admin@novadental.com"
+      : process.env.USER_INITIAL_EMAIL || "user@novadental.com";
+
+  const password =
+    role === "ADMIN"
+      ? process.env.ADMIN_INITIAL_PASSWORD
+      : process.env.USER_INITIAL_PASSWORD;
+
+  if (!password) {
+    const varName = role === "ADMIN" ? "ADMIN_INITIAL_PASSWORD" : "USER_INITIAL_PASSWORD";
+    return {
+      success: false,
+      error: `Demo credentials are not configured on the server. Please set ${varName}.`,
+    };
+  }
+
+  const formData = new FormData();
+  formData.append("email", email);
+  formData.append("password", password);
+
+  return loginAction(undefined, formData);
 }
 
 export async function logoutAction() {

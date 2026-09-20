@@ -1,9 +1,9 @@
 "use client";
 
-import { Suspense, useActionState } from "react";
+import { Suspense, useActionState, useState, useTransition } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { loginAction, type LoginActionState } from "./actions";
+import { loginAction, demoLoginAction, type LoginActionState } from "./actions";
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -14,12 +14,30 @@ function LoginForm() {
     {}
   );
 
+  const [isDemoPending, startDemoTransition] = useTransition();
+  const [activeDemoRole, setActiveDemoRole] = useState<"ADMIN" | "USER" | null>(null);
+  const [demoError, setDemoError] = useState<string | null>(null);
+
+  const handleDemoLogin = (role: "ADMIN" | "USER") => {
+    setActiveDemoRole(role);
+    setDemoError(null);
+    startDemoTransition(async () => {
+      const res = await demoLoginAction(role);
+      if (res?.error) {
+        setDemoError(res.error);
+        setActiveDemoRole(null);
+      }
+    });
+  };
+
+  const errorMessage = state?.error || demoError;
+
   return (
-    <div className="bg-slate-800/90 border border-slate-700/80 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-sm">
+    <div className="bg-slate-800/90 border border-slate-700/80 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-sm space-y-6">
       {/* Alert Error Banner */}
-      {state?.error && (
+      {errorMessage && (
         <div
-          className="mb-6 rounded-xl border border-red-500/30 bg-red-950/40 p-4 text-sm text-red-300"
+          className="rounded-xl border border-red-500/30 bg-red-950/40 p-4 text-sm text-red-300"
           role="alert"
         >
           <div className="flex items-center gap-2 font-medium">
@@ -36,12 +54,13 @@ function LoginForm() {
                 d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
               />
             </svg>
-            {state.error}
+            {errorMessage}
           </div>
         </div>
       )}
 
-      <form action={formAction} className="space-y-6">
+      {/* Manual Email/Password Form */}
+      <form action={formAction} className="space-y-4">
         <input type="hidden" name="callbackUrl" value={callbackUrl} />
 
         {/* Email Field */}
@@ -91,8 +110,8 @@ function LoginForm() {
         {/* Submit Button */}
         <button
           type="submit"
-          disabled={isPending}
-          className="w-full cursor-pointer rounded-lg bg-teal-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-600/20 hover:bg-teal-500 focus-visible:outline-2 focus-visible:outline-teal-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          disabled={isPending || isDemoPending}
+          className="w-full cursor-pointer rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-teal-600/20 hover:bg-teal-500 focus-visible:outline-2 focus-visible:outline-teal-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
           {isPending ? (
             <span className="flex items-center justify-center gap-2">
@@ -114,13 +133,116 @@ function LoginForm() {
               Authenticating...
             </span>
           ) : (
-            "Sign In to Admin Portal"
+            "Sign In"
           )}
         </button>
       </form>
 
+      {/* Recruiter Demo Access Section */}
+      <div className="relative border-t border-slate-700/80 pt-6">
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-slate-800 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+          Or One-Click Demo Access
+        </div>
+
+        <p className="text-xs text-slate-400 text-center mb-4">
+          Instantly evaluate user roles without typing credentials:
+        </p>
+
+        <div className="space-y-3">
+          {/* Admin Demo Button */}
+          <button
+            type="button"
+            onClick={() => handleDemoLogin("ADMIN")}
+            disabled={isPending || isDemoPending}
+            className="w-full group cursor-pointer text-left rounded-xl border border-teal-500/30 bg-teal-950/30 p-3.5 hover:bg-teal-900/40 hover:border-teal-400/50 focus-visible:outline-2 focus-visible:outline-teal-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="rounded-md bg-teal-500/20 border border-teal-400/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-teal-300">
+                  ADMIN
+                </span>
+                <span className="text-sm font-semibold text-white group-hover:text-teal-200 transition-colors">
+                  {isDemoPending && activeDemoRole === "ADMIN"
+                    ? "Signing in as Admin Demo..."
+                    : "Login as Admin Demo"}
+                </span>
+              </div>
+              {isDemoPending && activeDemoRole === "ADMIN" ? (
+                <svg className="h-4 w-4 animate-spin text-teal-400" viewBox="0 0 24 24" fill="none">
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
+              ) : (
+                <span className="text-xs text-teal-400 group-hover:translate-x-0.5 transition-transform">
+                  →
+                </span>
+              )}
+            </div>
+            <p className="mt-1.5 text-[11px] text-slate-400 leading-normal">
+              Explore lead management, CRM workflow, notes, tasks, activity history, and AI lead intelligence.
+            </p>
+          </button>
+
+          {/* User Demo Button */}
+          <button
+            type="button"
+            onClick={() => handleDemoLogin("USER")}
+            disabled={isPending || isDemoPending}
+            className="w-full group cursor-pointer text-left rounded-xl border border-blue-500/30 bg-blue-950/30 p-3.5 hover:bg-blue-900/40 hover:border-blue-400/50 focus-visible:outline-2 focus-visible:outline-blue-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="rounded-md bg-blue-500/20 border border-blue-400/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-300">
+                  USER
+                </span>
+                <span className="text-sm font-semibold text-white group-hover:text-blue-200 transition-colors">
+                  {isDemoPending && activeDemoRole === "USER"
+                    ? "Signing in as User Demo..."
+                    : "Login as User Demo"}
+                </span>
+              </div>
+              {isDemoPending && activeDemoRole === "USER" ? (
+                <svg className="h-4 w-4 animate-spin text-blue-400" viewBox="0 0 24 24" fill="none">
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
+              ) : (
+                <span className="text-xs text-blue-400 group-hover:translate-x-0.5 transition-transform">
+                  →
+                </span>
+              )}
+            </div>
+            <p className="mt-1.5 text-[11px] text-slate-400 leading-normal">
+              Explore the application with standard user permissions and verify role-based route protection.
+            </p>
+          </button>
+        </div>
+      </div>
+
       {/* Footer Back Link */}
-      <div className="mt-6 border-t border-slate-700/60 pt-4 text-center">
+      <div className="border-t border-slate-700/60 pt-4 text-center">
         <Link
           href="/"
           className="text-xs text-slate-400 hover:text-teal-400 transition-colors"

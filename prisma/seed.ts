@@ -11,17 +11,30 @@ const prisma = new PrismaClient();
 
 async function main() {
   const adminEmail = process.env.ADMIN_INITIAL_EMAIL || "admin@novadental.com";
-  const adminPassword = process.env.ADMIN_INITIAL_PASSWORD;
+  const adminPassword =
+    process.env.ADMIN_INITIAL_PASSWORD ||
+    (process.env.NODE_ENV !== "production" ? "SecureAdminPassword123!" : undefined);
 
   if (!adminPassword) {
     throw new Error(
-      "FATAL: ADMIN_INITIAL_PASSWORD environment variable must be configured to seed the admin user."
+      "FATAL: ADMIN_INITIAL_PASSWORD environment variable must be configured to seed the admin user in production."
+    );
+  }
+
+  const userEmail = process.env.USER_INITIAL_EMAIL || "user@novadental.com";
+  const userPassword =
+    process.env.USER_INITIAL_PASSWORD ||
+    (process.env.NODE_ENV !== "production" ? "DemoUserPassword123!" : undefined);
+
+  if (!userPassword) {
+    throw new Error(
+      "FATAL: USER_INITIAL_PASSWORD environment variable must be configured to seed the demo user in production."
     );
   }
 
   console.log(`Seeding initial admin account: ${adminEmail}...`);
 
-  const passwordHash = await bcrypt.hash(adminPassword, 12);
+  const adminPasswordHash = await bcrypt.hash(adminPassword, 12);
 
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },
@@ -29,12 +42,29 @@ async function main() {
     create: {
       email: adminEmail,
       name: "Admin User",
-      passwordHash,
+      passwordHash: adminPasswordHash,
       role: Role.ADMIN,
     },
   });
 
   console.log(`Admin ready: ${admin.email}`);
+
+  console.log(`Seeding initial demo user account: ${userEmail}...`);
+
+  const userPasswordHash = await bcrypt.hash(userPassword, 12);
+
+  const demoUser = await prisma.user.upsert({
+    where: { email: userEmail },
+    update: {},
+    create: {
+      email: userEmail,
+      name: "Demo Staff User",
+      passwordHash: userPasswordHash,
+      role: Role.USER,
+    },
+  });
+
+  console.log(`Demo user ready: ${demoUser.email}`);
 
   const lead = await prisma.lead.upsert({
     where: { id: "seed-lead-nova-dental" },
@@ -54,6 +84,25 @@ async function main() {
   });
 
   console.log(`Lead ready: ${lead.name}`);
+
+  const userConsultation = await prisma.lead.upsert({
+    where: { id: "seed-user-consultation-nova-dental" },
+    update: {},
+    create: {
+      id: "seed-user-consultation-nova-dental",
+      name: demoUser.name || "Demo Staff User",
+      email: demoUser.email,
+      phone: "+1 (555) 234-5678",
+      serviceInterest: "Dental Consultation",
+      message:
+        "Interested in a comprehensive dental examination and teeth cleaning consultation.",
+      consentGiven: true,
+      status: LeadStatus.NEW,
+      source: "portal-demo",
+    },
+  });
+
+  console.log(`User consultation ready: ${userConsultation.id}`);
 
   await prisma.leadNote.upsert({
     where: { id: "seed-note-nova-dental" },
