@@ -9,7 +9,12 @@ try {
   } as NodeModule;
 } catch {}
 
-const mockCookiesStore = new Map<string, any>();
+interface MockCookie {
+  value: string;
+  [key: string]: unknown;
+}
+
+const mockCookiesStore = new Map<string, MockCookie>();
 try {
   const nextHeadersPath = require.resolve("next/headers");
   require.cache[nextHeadersPath] = {
@@ -19,13 +24,21 @@ try {
     exports: {
       cookies: async () => ({
         get: (name: string) => mockCookiesStore.get(name),
-        set: (name: string, value: string, options: any) =>
+        set: (name: string, value: string, options?: Record<string, unknown>) =>
           mockCookiesStore.set(name, { value, ...options }),
         delete: (name: string) => mockCookiesStore.delete(name),
       }),
     },
   } as NodeModule;
 } catch {}
+
+class RedirectError extends Error {
+  url: string;
+  constructor(url: string) {
+    super("NEXT_REDIRECT");
+    this.url = url;
+  }
+}
 
 try {
   const nextNavPath = require.resolve("next/navigation");
@@ -35,9 +48,7 @@ try {
     loaded: true,
     exports: {
       redirect: (url: string) => {
-        const err = new Error("NEXT_REDIRECT");
-        (err as any).url = url;
-        throw err;
+        throw new RedirectError(url);
       },
     },
   } as NodeModule;
@@ -439,9 +450,11 @@ async function runTests() {
     let redirectTarget: string | null = null;
     try {
       await registerAction(undefined, validForm);
-    } catch (e: any) {
-      if (e.message === "NEXT_REDIRECT") {
+    } catch (e: unknown) {
+      if (e instanceof RedirectError) {
         redirectTarget = e.url;
+      } else if (e instanceof Error && e.message === "NEXT_REDIRECT" && "url" in e) {
+        redirectTarget = String((e as Record<string, unknown>).url);
       } else {
         throw e;
       }
@@ -501,9 +514,11 @@ async function runTests() {
     let escalationRedirect: string | null = null;
     try {
       await registerAction(undefined, escalationForm);
-    } catch (e: any) {
-      if (e.message === "NEXT_REDIRECT") {
+    } catch (e: unknown) {
+      if (e instanceof RedirectError) {
         escalationRedirect = e.url;
+      } else if (e instanceof Error && e.message === "NEXT_REDIRECT" && "url" in e) {
+        escalationRedirect = String((e as Record<string, unknown>).url);
       } else {
         throw e;
       }
@@ -559,7 +574,7 @@ async function runTests() {
       },
     });
 
-    function createJsonRequest(body: any): Request {
+    function createJsonRequest(body: unknown): Request {
       return new Request("http://localhost:3000/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
