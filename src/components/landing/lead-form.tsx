@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import { leadSchema, serviceInterestOptions, type LeadInput } from "@/lib/validations/lead";
 
 type FormStatus = "idle" | "submitting" | "success" | "error";
@@ -9,17 +10,24 @@ type LeadFormState = Omit<LeadInput, "consentGiven"> & {
   consentGiven: boolean;
 };
 
-const initialFormState: LeadFormState = {
-  name: "",
-  email: "",
-  phone: "",
-  serviceInterest: undefined,
-  message: "",
-  consentGiven: false,
-};
+interface LeadFormProps {
+  user?: {
+    id: string;
+    email: string;
+    role: string;
+    name?: string | null;
+  } | null;
+}
 
-export function LeadForm() {
-  const [formData, setFormData] = useState<LeadFormState>(initialFormState);
+export function LeadForm({ user }: LeadFormProps = {}) {
+  const [formData, setFormData] = useState<LeadFormState>({
+    name: user?.name || "",
+    email: user?.email || "",
+    phone: "",
+    serviceInterest: undefined,
+    message: "",
+    consentGiven: false,
+  });
   const [status, setStatus] = useState<FormStatus>("idle");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [serverError, setServerError] = useState<string | null>(null);
@@ -87,10 +95,20 @@ export function LeadForm() {
 
       if (response.status === 201 && responseData.success) {
         setStatus("success");
-        setFormData(initialFormState);
+        setFormData({
+          name: user?.name || "",
+          email: user?.email || "",
+          phone: "",
+          serviceInterest: undefined,
+          message: "",
+          consentGiven: false,
+        });
       } else if (response.status === 400 && responseData.errors) {
         setFieldErrors(responseData.errors);
         setServerError(responseData.message || "Please fix the highlighted errors below.");
+        setStatus("error");
+      } else if (response.status === 401) {
+        setServerError(responseData.message || "You must be signed in as a patient to submit a consultation request.");
         setStatus("error");
       } else {
         setServerError("Something went wrong. Please try again later.");
@@ -106,9 +124,73 @@ export function LeadForm() {
     setStatus("idle");
     setFieldErrors({});
     setServerError(null);
-    setFormData(initialFormState);
+    setFormData({
+      name: user?.name || "",
+      email: user?.email || "",
+      phone: "",
+      serviceInterest: undefined,
+      message: "",
+      consentGiven: false,
+    });
   };
 
+  // State 1: Unauthenticated visitor guidance
+  if (!user) {
+    return (
+      <div className="rounded-xl border border-teal-200 bg-white p-8 text-center shadow-sm">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-teal-100 text-teal-800 mb-4">
+          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+          </svg>
+        </div>
+        <h3 className="text-xl font-semibold text-slate-900">Request a Consultation</h3>
+        <p className="mt-2 text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
+          You need an account to submit and track your consultation request. Please sign in or create an account to get started.
+        </p>
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <Link
+            href="/admin/login"
+            className="w-full sm:w-auto inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 transition-colors"
+          >
+            Sign In
+          </Link>
+          <Link
+            href="/register"
+            className="w-full sm:w-auto inline-flex min-h-11 items-center justify-center rounded-md bg-teal-700 px-5 text-sm font-semibold text-white hover:bg-teal-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 transition-colors shadow-xs"
+          >
+            Create Account →
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // State 2: Authenticated administrator guidance
+  if (user.role === "ADMIN") {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-8 text-center shadow-sm">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-800 mb-4">
+          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+        </div>
+        <h3 className="text-xl font-semibold text-amber-950">Administrator Account</h3>
+        <p className="mt-2 text-sm text-amber-900 max-w-md mx-auto leading-relaxed">
+          You are currently signed in with an administrative account (<span className="font-semibold">{user.email}</span>). Customer consultation requests cannot be submitted from administrative accounts.
+        </p>
+        <div className="mt-6">
+          <Link
+            href="/admin/dashboard"
+            className="inline-flex min-h-11 items-center justify-center rounded-md bg-teal-700 px-5 text-sm font-semibold text-white hover:bg-teal-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 transition-colors shadow-xs"
+          >
+            Go to Admin Dashboard →
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // State 3: Submission successful view
   if (status === "success") {
     return (
       <div
@@ -130,15 +212,23 @@ export function LeadForm() {
         </div>
         <h3 className="mt-4 text-xl font-semibold text-teal-950">Consultation Request Received</h3>
         <p className="mt-2 text-base leading-relaxed text-teal-900">
-          Thank you! Your consultation request has been received. We will reach out shortly.
+          Thank you! Your consultation request has been submitted. You can track its live review status and clinical next steps directly from your patient portal.
         </p>
-        <button
-          type="button"
-          onClick={handleReset}
-          className="mt-6 inline-flex min-h-11 items-center justify-center rounded-md bg-teal-700 px-5 text-sm font-semibold text-white hover:bg-teal-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700"
-        >
-          Submit another request
-        </button>
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <Link
+            href="/portal"
+            className="w-full sm:w-auto inline-flex min-h-11 items-center justify-center rounded-md bg-teal-700 px-5 text-sm font-semibold text-white hover:bg-teal-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 transition-colors shadow-xs"
+          >
+            View in My Portal →
+          </Link>
+          <button
+            type="button"
+            onClick={handleReset}
+            className="w-full sm:w-auto inline-flex min-h-11 items-center justify-center rounded-md border border-teal-300 bg-white px-5 text-sm font-semibold text-teal-900 hover:bg-teal-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 transition-colors"
+          >
+            Submit another request
+          </button>
+        </div>
       </div>
     );
   }

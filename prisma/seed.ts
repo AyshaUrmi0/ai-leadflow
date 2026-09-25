@@ -87,9 +87,12 @@ async function main() {
 
   const userConsultation = await prisma.lead.upsert({
     where: { id: "seed-user-consultation-nova-dental" },
-    update: {},
+    update: {
+      userId: demoUser.id,
+    },
     create: {
       id: "seed-user-consultation-nova-dental",
+      userId: demoUser.id,
       name: demoUser.name || "Demo Staff User",
       email: demoUser.email,
       phone: "+1 (555) 234-5678",

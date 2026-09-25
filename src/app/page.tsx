@@ -6,18 +6,21 @@ import { Navbar } from "@/components/landing/navbar";
 import { Services } from "@/components/landing/services";
 import { Testimonials } from "@/components/landing/testimonials";
 import { WhyChooseNova } from "@/components/landing/why-choose-nova";
+import { getAuthenticatedUser } from "@/lib/dal";
 
-export default function Home() {
+export default async function Home() {
+  const user = await getAuthenticatedUser();
+
   return (
     <>
-      <Navbar />
+      <Navbar user={user} />
       <main id="main-content">
         <Hero />
         <Services />
         <WhyChooseNova />
         <Testimonials />
         <FAQ />
-        <FinalCTA />
+        <FinalCTA user={user} />
       </main>
       <Footer />
     </>

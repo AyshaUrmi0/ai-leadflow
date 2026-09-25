@@ -1,10 +1,24 @@
 import { NextResponse } from "next/server";
+import { getAuthenticatedUser } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
 import { leadSchema } from "@/lib/validations/lead";
 
 export async function POST(request: Request) {
   try {
+    const user = await getAuthenticatedUser();
+
+    if (!user || user.role !== "USER") {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "You must be logged in to submit a consultation request.",
+        },
+        { status: 401 }
+      );
+    }
+
     let body: unknown;
+
     try {
       body = await request.json();
     } catch {
@@ -35,6 +49,7 @@ export async function POST(request: Request) {
 
     await prisma.lead.create({
       data: {
+        userId: user.id,
         name: validatedData.name,
         email: validatedData.email,
         phone: validatedData.phone,
@@ -53,6 +68,7 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error("Unhandled error processing lead creation:", error);
+
     return NextResponse.json(
       {
         success: false,
