@@ -1,15 +1,15 @@
 import "server-only";
 
-import OpenAI from "openai";
+import { GoogleGenAI, ApiError } from "@google/genai";
 import { leadIntelligenceSchema } from "@/lib/validations/intelligence";
 import { buildLeadIntelligencePrompt } from "./prompts";
 import type { LeadIntelligenceInput, AIIntelligenceResult } from "./types";
 
-const DEFAULT_MODEL = "gpt-4o-mini";
+const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
 const DEFAULT_TIMEOUT_MS = 15000;
 
 /**
- * Generates structured AI lead intelligence for a dental patient lead.
+ * Generates structured AI lead intelligence for a dental patient lead using Google Gemini.
  *
  * Guarantees:
  * - Server-only execution (`import "server-only"`).
@@ -21,7 +21,7 @@ const DEFAULT_TIMEOUT_MS = 15000;
 export async function generateLeadIntelligence(
   input: LeadIntelligenceInput
 ): Promise<AIIntelligenceResult> {
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
 
   if (!apiKey) {
     return {
@@ -32,25 +32,25 @@ export async function generateLeadIntelligence(
   }
 
   try {
-    const openai = new OpenAI({
+    const ai = new GoogleGenAI({
       apiKey,
-      timeout: DEFAULT_TIMEOUT_MS,
+      httpOptions: { timeout: DEFAULT_TIMEOUT_MS },
     });
-
     const { systemPrompt, userPrompt } = buildLeadIntelligencePrompt(input);
 
-    const completion = await openai.chat.completions.create({
+    const response = await ai.models.generateContent({
       model: DEFAULT_MODEL,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.2,
-      max_tokens: 800,
+      contents: userPrompt,
+      config: {
+        systemInstruction: systemPrompt,
+        responseMimeType: "application/json",
+        temperature: 0.2,
+        maxOutputTokens: 800,
+        abortSignal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
+      },
     });
 
-    const rawContent = completion.choices[0]?.message?.content;
+    const rawContent = response.text;
 
     if (!rawContent || rawContent.trim().length === 0) {
       return {
@@ -89,8 +89,8 @@ export async function generateLeadIntelligence(
     };
   } catch (err: unknown) {
     // Sanitize and map provider errors without leaking credentials or sensitive debug info
-    if (err instanceof OpenAI.APIError) {
-      if (err.status === 401 || err.status === 403) {
+    if (err instanceof ApiError) {
+      if (err.status === 400 || err.status === 401 || err.status === 403) {
         return {
           success: false,
           error: "AI service authentication failed.",
@@ -104,6 +104,13 @@ export async function generateLeadIntelligence(
           code: "PROVIDER_ERROR",
         };
       }
+      if (err.status === 503) {
+        return {
+          success: false,
+          error: "AI service is currently experiencing high demand. Please try again shortly.",
+          code: "PROVIDER_ERROR",
+        };
+      }
       return {
         success: false,
         error: "AI service provider returned an error.",
@@ -112,7 +119,12 @@ export async function generateLeadIntelligence(
     }
 
     if (err instanceof Error) {
-      if (err.name === "AbortError" || err.message.toLowerCase().includes("timeout")) {
+      if (
+        err.name === "AbortError" ||
+        err.name === "TimeoutError" ||
+        err.message.toLowerCase().includes("timeout") ||
+        err.message.toLowerCase().includes("aborted")
+      ) {
         return {
           success: false,
           error: "AI request timed out. Please try again.",

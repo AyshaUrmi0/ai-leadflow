@@ -239,6 +239,8 @@ async function runTests() {
   // 11. Missing API key is handled safely
   console.log("\n11. Testing Missing API Key Provider Handling...");
   const { generateLeadIntelligence } = await import("../src/lib/ai/provider");
+  const originalGemini = process.env.GEMINI_API_KEY;
+  delete process.env.GEMINI_API_KEY;
   const originalEnv = process.env.OPENAI_API_KEY;
   delete process.env.OPENAI_API_KEY;
   const missingKeyResult = await generateLeadIntelligence(mockInput);
@@ -246,6 +248,7 @@ async function runTests() {
     !missingKeyResult.success && missingKeyResult.code === "MISSING_API_KEY",
     "Missing API key returns safe error result without throwing"
   );
+  if (originalGemini) process.env.GEMINI_API_KEY = originalGemini;
   if (originalEnv) process.env.OPENAI_API_KEY = originalEnv;
 
   // 12. Prompt contains explicit untrusted-data boundaries
@@ -295,6 +298,7 @@ async function runTests() {
   assert(!userPrompt.includes("passwordHash"), "User prompt does not contain passwordHash");
   assert(!userPrompt.includes("sessionSecret"), "User prompt does not contain sessionSecret");
   assert(!userPrompt.includes("DATABASE_URL"), "User prompt does not contain DATABASE_URL");
+  assert(!userPrompt.includes("GEMINI_API_KEY"), "User prompt does not contain GEMINI_API_KEY");
   assert(!userPrompt.includes("OPENAI_API_KEY"), "User prompt does not contain API key");
   assert(!userPrompt.includes(mockInput.leadId!), "User prompt excludes internal lead database ID");
 

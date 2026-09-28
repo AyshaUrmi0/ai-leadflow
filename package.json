@@ -10,11 +10,11 @@
     "test": "tsx tests/ai-infrastructure.ts && tsx tests/ai-lead-intelligence.ts && tsx tests/authentication.ts"
   },
   "dependencies": {
+    "@google/genai": "^2.24.0",
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.10",
     "next": "16.3.1",
-    "openai": "^7.10.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "^0.0.1",
