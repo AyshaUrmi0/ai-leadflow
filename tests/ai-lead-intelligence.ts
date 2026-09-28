@@ -93,8 +93,10 @@ async function runTests() {
   const nonexistentResult = await getLeadAIIntelligence("nonexistent_lead_cuid_12345");
   assert(!nonexistentResult.success && nonexistentResult.error === "Lead not found.", "getLeadAIIntelligence returns 'Lead not found.' for nonexistent lead");
 
-  // 3. Missing OPENAI_API_KEY handling
-  console.log("\n3. Testing Missing OPENAI_API_KEY Safe Handling...");
+  // 3. Missing API Key handling
+  console.log("\n3. Testing Missing API Key Safe Handling...");
+  const savedGeminiKey = process.env.GEMINI_API_KEY;
+  delete process.env.GEMINI_API_KEY;
   const savedKey = process.env.OPENAI_API_KEY;
   delete process.env.OPENAI_API_KEY;
 
@@ -107,6 +109,7 @@ async function runTests() {
   );
 
   // Restore environment variable
+  if (savedGeminiKey) process.env.GEMINI_API_KEY = savedGeminiKey;
   if (savedKey) process.env.OPENAI_API_KEY = savedKey;
 
   // 4. Valid AI response schema validation
@@ -188,14 +191,17 @@ async function runTests() {
   // 8. Client/Server Boundary Check
   console.log("\n8. Inspecting Client/Server Isolation...");
   assert(!drawerCode.includes("from \"openai\""), "LeadDetailsDrawer does NOT import OpenAI SDK");
+  assert(!drawerCode.includes("@google/genai"), "LeadDetailsDrawer does NOT import GenAI SDK");
   assert(!drawerCode.includes("from \"@/lib/ai/provider\""), "LeadDetailsDrawer does NOT import provider.ts directly");
   assert(!drawerCode.includes("process.env.OPENAI_API_KEY"), "LeadDetailsDrawer does NOT access OPENAI_API_KEY");
+  assert(!drawerCode.includes("process.env.GEMINI_API_KEY"), "LeadDetailsDrawer does NOT access GEMINI_API_KEY");
 
   const cardCode = fs.readFileSync(
     path.resolve(__dirname, "../src/components/admin/lead-ai-card.tsx"),
     "utf-8"
   );
   assert(!cardCode.includes("from \"openai\""), "LeadAICard does NOT import OpenAI SDK");
+  assert(!cardCode.includes("@google/genai"), "LeadAICard does NOT import GenAI SDK");
   assert(!cardCode.includes("from \"@/lib/ai/provider\""), "LeadAICard does NOT import provider.ts directly");
 
   // 9. Database Immutability Check: Zero DB writes during AI intelligence generation
