@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { logoutAction } from "@/app/admin/login/actions";
+import { logoutAction } from "@/app/login/actions";
 
 interface AdminNavProps {
   adminEmail: string;

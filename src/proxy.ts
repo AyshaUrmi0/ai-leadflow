@@ -4,8 +4,8 @@ import { decryptSession } from "@/lib/auth/session";
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const isAdminRoute = pathname.startsWith("/admin") && pathname !== "/admin/login";
-  const isAdminLoginRoute = pathname === "/admin/login";
+  const isAdminRoute = pathname.startsWith("/admin");
+  const isLoginRoute = pathname === "/login";
   const isAdminApiRoute = pathname.startsWith("/api/admin");
   const isPortalRoute = pathname.startsWith("/portal");
 
@@ -18,7 +18,7 @@ export default async function proxy(request: NextRequest) {
   // Protect /admin UI routes: requires ADMIN role
   if (isAdminRoute) {
     if (!hasSession) {
-      const loginUrl = new URL("/admin/login", request.url);
+      const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("callbackUrl", pathname);
       return NextResponse.redirect(loginUrl);
     }
@@ -41,13 +41,13 @@ export default async function proxy(request: NextRequest) {
 
   // Protect /portal UI routes: requires authenticated session
   if (isPortalRoute && !hasSession) {
-    const loginUrl = new URL("/admin/login", request.url);
+    const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Redirect authenticated users away from /admin/login to their respective area
-  if (isAdminLoginRoute && hasSession) {
+  // Redirect authenticated users away from /login to their respective area
+  if (isLoginRoute && hasSession) {
     if (isAdmin) {
       return NextResponse.redirect(new URL("/admin/dashboard", request.url));
     }
@@ -64,5 +64,6 @@ export const config = {
     "/admin/:path*",
     "/api/admin/:path*",
     "/portal/:path*",
+    "/login",
   ],
 };

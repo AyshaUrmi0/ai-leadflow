@@ -155,8 +155,8 @@ async function runTests() {
   }
 
   function evaluateRoute(pathname: string, session: SessionPayload | null): RouteDecision {
-    const isAdminRoute = pathname.startsWith("/admin") && pathname !== "/admin/login";
-    const isAdminLoginRoute = pathname === "/admin/login";
+    const isAdminRoute = pathname.startsWith("/admin");
+    const isLoginRoute = pathname === "/login";
     const isAdminApiRoute = pathname.startsWith("/api/admin");
     const isPortalRoute = pathname.startsWith("/portal");
 
@@ -165,7 +165,7 @@ async function runTests() {
     const isUser = !!(hasSession && session.role === "USER");
 
     if (isAdminRoute) {
-      if (!hasSession) return { allow: false, redirect: `/admin/login?callbackUrl=${pathname}` };
+      if (!hasSession) return { allow: false, redirect: `/login?callbackUrl=${pathname}` };
       if (!isAdmin) return { allow: false, redirect: "/portal" };
     }
 
@@ -174,10 +174,10 @@ async function runTests() {
     }
 
     if (isPortalRoute && !hasSession) {
-      return { allow: false, redirect: `/admin/login?callbackUrl=${pathname}` };
+      return { allow: false, redirect: `/login?callbackUrl=${pathname}` };
     }
 
-    if (isAdminLoginRoute && hasSession) {
+    if (isLoginRoute && hasSession) {
       if (isAdmin) return { allow: false, redirect: "/admin/dashboard" };
       if (isUser) return { allow: false, redirect: "/portal" };
     }
@@ -187,16 +187,16 @@ async function runTests() {
 
   // Unauthenticated tests
   assert(
-    evaluateRoute("/admin/dashboard", null).redirect === "/admin/login?callbackUrl=/admin/dashboard",
-    "Unauthenticated access to /admin/dashboard redirects to /admin/login"
+    evaluateRoute("/admin/dashboard", null).redirect === "/login?callbackUrl=/admin/dashboard",
+    "Unauthenticated access to /admin/dashboard redirects to /login"
   );
   assert(
-    evaluateRoute("/admin/leads", null).redirect === "/admin/login?callbackUrl=/admin/leads",
-    "Unauthenticated access to /admin/leads redirects to /admin/login"
+    evaluateRoute("/admin/leads", null).redirect === "/login?callbackUrl=/admin/leads",
+    "Unauthenticated access to /admin/leads redirects to /login"
   );
   assert(
-    evaluateRoute("/portal", null).redirect === "/admin/login?callbackUrl=/portal",
-    "Unauthenticated access to /portal redirects to /admin/login"
+    evaluateRoute("/portal", null).redirect === "/login?callbackUrl=/portal",
+    "Unauthenticated access to /portal redirects to /login"
   );
   assert(
     evaluateRoute("/api/admin/leads", null).status === 401,
@@ -221,8 +221,8 @@ async function runTests() {
     "USER access to /portal is allowed"
   );
   assert(
-    evaluateRoute("/admin/login", decryptedUser).redirect === "/portal",
-    "Authenticated USER visiting /admin/login is redirected to /portal"
+    evaluateRoute("/login", decryptedUser).redirect === "/portal",
+    "Authenticated USER visiting /login is redirected to /portal"
   );
 
   // ADMIN role tests
@@ -239,8 +239,8 @@ async function runTests() {
     "ADMIN access to /portal is allowed"
   );
   assert(
-    evaluateRoute("/admin/login", decryptedAdmin).redirect === "/admin/dashboard",
-    "Authenticated ADMIN visiting /admin/login is redirected to /admin/dashboard"
+    evaluateRoute("/login", decryptedAdmin).redirect === "/admin/dashboard",
+    "Authenticated ADMIN visiting /login is redirected to /admin/dashboard"
   );
 
   // 5. Demo Account Credential Resolution
@@ -398,7 +398,7 @@ async function runTests() {
 
   // 11. User Registration Flow & Security Verification
   console.log("\n11. Testing User Registration Flow & Security...");
-  const { registerAction } = await import("../src/app/admin/login/actions");
+  const { registerAction } = await import("../src/app/login/actions");
   const { prisma } = await import("../src/lib/prisma");
 
   const uniqueId = Date.now();

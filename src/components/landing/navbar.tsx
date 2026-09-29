@@ -59,7 +59,7 @@ export function Navbar({ user }: NavbarProps = {}) {
           ) : (
             <>
               <Link
-                href="/admin/login"
+                href="/login"
                 className="inline-flex min-h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 transition-colors"
               >
                 Sign In
