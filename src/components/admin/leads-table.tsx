@@ -40,6 +40,7 @@ export function LeadsTable({
 
   const [searchValue, setSearchValue] = useState(currentSearch);
   const [selectedLead, setSelectedLead] = useState<SerializedLead | null>(null);
+  const [updatingLeadId, setUpdatingLeadId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [updateError, setUpdateError] = useState<string | null>(null);
 
@@ -78,11 +79,19 @@ export function LeadsTable({
   };
 
   const handleInlineStatusChange = (leadId: string, newStatus: LeadStatus) => {
+    if (updatingLeadId) return;
     setUpdateError(null);
+    setUpdatingLeadId(leadId);
     startTransition(async () => {
-      const res = await updateLeadStatusAction(leadId, newStatus);
-      if (!res.success) {
-        setUpdateError(res.error || "Failed to update status.");
+      try {
+        const res = await updateLeadStatusAction(leadId, newStatus);
+        if (!res.success) {
+          setUpdateError(res.error || "Failed to update status.");
+        }
+      } catch {
+        setUpdateError("Failed to update status.");
+      } finally {
+        setUpdatingLeadId(null);
       }
     });
   };
@@ -216,35 +225,45 @@ export function LeadsTable({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white text-slate-800">
-                {leads.map((lead) => (
-                  <tr key={lead.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="px-5 py-4">
-                      <div className="font-semibold text-slate-950">{lead.name}</div>
-                      <div className="text-slate-500">{lead.email}</div>
-                    </td>
-                    <td className="px-5 py-4 text-slate-700">
-                      {lead.serviceInterest || <span className="text-slate-400 italic">None</span>}
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-2">
-                        <StatusBadge status={lead.status} />
-                        <select
-                          aria-label={`Change status for ${lead.name}`}
-                          disabled={isPending}
-                          value={lead.status}
-                          onChange={(e) =>
-                            handleInlineStatusChange(lead.id, e.target.value as LeadStatus)
-                          }
-                          className="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 focus:border-teal-700 focus:outline-2 focus:outline-teal-700 disabled:opacity-50"
-                        >
-                          {leadStatusValues.map((st) => (
-                            <option key={st} value={st}>
-                              {st}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </td>
+                {leads.map((lead) => {
+                  const isUpdating = updatingLeadId === lead.id;
+                  return (
+                    <tr key={lead.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="px-5 py-4">
+                        <div className="font-semibold text-slate-950">{lead.name}</div>
+                        <div className="text-slate-500">{lead.email}</div>
+                      </td>
+                      <td className="px-5 py-4 text-slate-700">
+                        {lead.serviceInterest || <span className="text-slate-400 italic">None</span>}
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className={`flex items-center gap-2 transition-opacity duration-150 ${isUpdating ? "opacity-60" : "opacity-100"}`}>
+                          <StatusBadge status={lead.status} />
+                          <select
+                            aria-label={`Change status for ${lead.name}`}
+                            disabled={isUpdating}
+                            value={lead.status}
+                            onChange={(e) =>
+                              handleInlineStatusChange(lead.id, e.target.value as LeadStatus)
+                            }
+                            className={`rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 focus:border-teal-700 focus:outline-2 focus:outline-teal-700 disabled:opacity-50 ${
+                              isUpdating ? "cursor-wait" : ""
+                            }`}
+                          >
+                            {leadStatusValues.map((st) => (
+                              <option key={st} value={st}>
+                                {st}
+                              </option>
+                            ))}
+                          </select>
+                          {isUpdating && (
+                            <span
+                              className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-teal-600 border-t-transparent"
+                              aria-label="Updating status..."
+                            />
+                          )}
+                        </div>
+                      </td>
                     <td className="px-5 py-4">
                       {lead.consentGiven ? (
                         <span className="inline-flex items-center text-teal-700 font-medium">
@@ -267,7 +286,8 @@ export function LeadsTable({
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
