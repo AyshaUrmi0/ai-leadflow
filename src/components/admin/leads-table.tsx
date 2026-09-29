@@ -20,13 +20,7 @@ interface LeadsTableProps {
   currentSearch?: string;
 }
 
-const statusTabOptions = [
-  { label: "All", value: "" },
-  { label: "New", value: "NEW" },
-  { label: "Contacted", value: "CONTACTED" },
-  { label: "Qualified", value: "QUALIFIED" },
-  { label: "Closed Lost", value: "CLOSED_LOST" },
-];
+
 
 export function LeadsTable({
   leads,
@@ -70,9 +64,6 @@ export function LeadsTable({
     updateQueryParams(val, currentStatus, 1);
   };
 
-  const handleStatusTabChange = (statusValue: string) => {
-    updateQueryParams(searchValue, statusValue, 1);
-  };
 
   const handlePageChange = (newPage: number) => {
     updateQueryParams(searchValue, currentStatus, newPage);
@@ -103,40 +94,19 @@ export function LeadsTable({
 
   return (
     <div>
-      {/* Search and Filters Toolbar */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        {/* Status Filter Tabs */}
-        <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 p-1.5 text-xs font-medium">
-          {statusTabOptions.map((tab) => {
-            const isActive = currentStatus === tab.value;
-            return (
-              <button
-                key={tab.value}
-                type="button"
-                onClick={() => handleStatusTabChange(tab.value)}
-                className={`rounded-md px-3 py-1.5 transition-colors ${
-                  isActive
-                    ? "bg-white text-slate-900 shadow-xs font-semibold"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                }`}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-
+      {/* Consolidated Non-Redundant Search & Filters Toolbar */}
+      <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-slate-200/90 bg-white p-4 shadow-2xs sm:flex-row sm:items-center sm:justify-between">
         {/* Search Bar */}
-        <div className="relative min-w-64">
+        <div className="relative flex-1 sm:max-w-md">
           <input
             type="text"
             value={searchValue}
             onChange={handleSearchChange}
-            placeholder="Search patient, email, phone, or service..."
-            className="w-full min-h-10 rounded-md border border-slate-300 bg-white px-3.5 py-2 pl-9 text-xs text-slate-900 placeholder:text-slate-400 focus:border-teal-700 focus:outline-2 focus:outline-teal-700"
+            placeholder="Search patient name, email, phone, or service..."
+            className="w-full min-h-10 rounded-xl border border-slate-300 bg-slate-50/50 px-3.5 py-2 pl-9 pr-8 text-xs text-slate-900 placeholder:text-slate-400 focus:border-teal-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-700/20 transition-all"
           />
           <svg
-            className="absolute left-3 top-2.5 h-4 w-4 text-slate-400"
+            className="absolute left-3 top-3 h-4 w-4 text-slate-400"
             fill="none"
             viewBox="0 0 24 24"
             strokeWidth="2"
@@ -149,14 +119,25 @@ export function LeadsTable({
               d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
             />
           </svg>
+          {searchValue && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchValue("");
+                updateQueryParams("", currentStatus, 1);
+              }}
+              className="absolute right-2.5 top-2.5 rounded-full p-0.5 text-xs text-slate-400 hover:text-slate-700"
+              aria-label="Clear search"
+            >
+              ✕
+            </button>
+          )}
         </div>
-      </div>
 
-      {/* Quick Treatment & Filter Pills Strip */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
-          <span className="text-[11px] font-medium text-slate-400">Quick Filter:</span>
-          {["Implants", "Whitening", "Invisalign", "Checkup", "Emergency"].map((svc) => {
+        {/* Quick Treatment Filters & Reset */}
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+          <span className="text-[11px] font-medium text-slate-400 hidden lg:inline">Service:</span>
+          {["Implants", "Whitening", "Invisalign", "Emergency"].map((svc) => {
             const isSelected = searchValue.toLowerCase() === svc.toLowerCase();
             return (
               <button
@@ -167,30 +148,30 @@ export function LeadsTable({
                   setSearchValue(nextSearch);
                   updateQueryParams(nextSearch, currentStatus, 1);
                 }}
-                className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-all ${
+                className={`rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-all ${
                   isSelected
                     ? "bg-teal-700 text-white font-semibold shadow-2xs"
-                    : "bg-slate-100 text-slate-600 hover:bg-teal-50 hover:text-teal-900 border border-slate-200/80"
+                    : "bg-slate-100/80 text-slate-600 hover:bg-teal-50 hover:text-teal-900 border border-slate-200/80"
                 }`}
               >
                 {svc}
               </button>
             );
           })}
-        </div>
 
-        {hasActiveFilters && (
-          <button
-            type="button"
-            onClick={() => {
-              setSearchValue("");
-              updateQueryParams("", "", 1);
-            }}
-            className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-600 hover:text-rose-800 transition-colors"
-          >
-            <span>✕ Reset all filters</span>
-          </button>
-        )}
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchValue("");
+                updateQueryParams("", "", 1);
+              }}
+              className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[11px] font-semibold text-rose-700 hover:bg-rose-100 transition-colors ml-1"
+            >
+              <span>✕ Reset Filters</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {updateError && (
