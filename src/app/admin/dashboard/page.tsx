@@ -29,28 +29,6 @@ export default async function AdminDashboardPage() {
       <AdminNav adminEmail={admin.email} />
 
       <main className="mx-auto max-w-7xl px-5 py-8 sm:px-6 lg:px-8 space-y-10">
-        {/* Security Session Banner */}
-        <div className="rounded-lg border border-teal-200 bg-teal-50/70 p-4 text-xs text-teal-900 flex items-center justify-between">
-          <div className="flex items-center gap-2 font-semibold">
-            <svg
-              className="h-4 w-4 text-teal-700 shrink-0"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth="2"
-              stroke="currentColor"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751A11.959 11.959 0 0112 2.714z"
-              />
-            </svg>
-            Authenticated Admin Session Active
-          </div>
-          <span className="text-[11px] text-teal-800">Protected by HttpOnly JWT Session & DAL</span>
-        </div>
-
         {/* Page Heading & Quick Actions */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-6">
           <div>
