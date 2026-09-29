@@ -15,12 +15,22 @@ const optionalTrimmedString = (maxLength: number) =>
     .transform((value) => value || undefined);
 
 export const leadSchema = z.object({
-  name: z.string().trim().min(2).max(100),
-  email: z.string().trim().toLowerCase().email(),
+  name: z
+    .string()
+    .trim()
+    .min(2, { message: "Please enter your full name (at least 2 characters)." })
+    .max(100, { message: "Name must be 100 characters or less." }),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email({ message: "Please enter a valid email address." }),
   phone: optionalTrimmedString(30),
   serviceInterest: optionalTrimmedString(100),
   message: optionalTrimmedString(1000),
-  consentGiven: z.literal(true),
+  consentGiven: z.literal(true, {
+    message: "Please check this box to agree to be contacted regarding your consultation request.",
+  }),
 });
 
 export type LeadInput = z.infer<typeof leadSchema>;
