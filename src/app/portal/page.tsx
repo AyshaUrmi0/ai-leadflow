@@ -272,7 +272,7 @@ export default async function UserPortalPage() {
         </section>
 
         {/* Subtle Recruiter / Evaluator Testing Footer */}
-        <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-5 text-xs text-slate-400 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        {/* <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-5 text-xs text-slate-400 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="space-y-1">
             <span className="font-semibold text-slate-300">Recruiter Evaluation Note:</span>
             <p className="text-[11px] text-slate-500">
@@ -289,7 +289,7 @@ export default async function UserPortalPage() {
               Test Admin Route Access →
             </Link>
           </div>
-        </div>
+        </div> */}
       </main>
     </div>
   );
