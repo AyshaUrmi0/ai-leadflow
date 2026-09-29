@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAuthenticatedAdmin } from "@/lib/dal";
 import { getLeads } from "@/lib/services/lead";
@@ -78,28 +79,102 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
           </p>
         </div>
 
-        {/* Stat Summary Cards */}
+        {/* Interactive Stat Quick Filter Cards */}
         <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-5">
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-            <p className="text-xs font-semibold text-slate-500 uppercase">Total Leads</p>
-            <p className="mt-1 text-2xl font-semibold text-slate-950">{countTotal}</p>
-          </div>
-          <div className="rounded-xl border border-teal-200 bg-teal-50/50 p-4 shadow-xs">
-            <p className="text-xs font-semibold text-teal-800 uppercase">New</p>
-            <p className="mt-1 text-2xl font-semibold text-teal-900">{countNew}</p>
-          </div>
-          <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 shadow-xs">
-            <p className="text-xs font-semibold text-amber-800 uppercase">Contacted</p>
-            <p className="mt-1 text-2xl font-semibold text-amber-900">{countContacted}</p>
-          </div>
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 shadow-xs">
-            <p className="text-xs font-semibold text-emerald-800 uppercase">Qualified</p>
-            <p className="mt-1 text-2xl font-semibold text-emerald-900">{countQualified}</p>
-          </div>
-          <div className="rounded-xl border border-slate-200 bg-slate-100/60 p-4 shadow-xs">
-            <p className="text-xs font-semibold text-slate-600 uppercase">Closed Lost</p>
-            <p className="mt-1 text-2xl font-semibold text-slate-800">{countClosedLost}</p>
-          </div>
+          <Link
+            href={`/admin/leads${search ? `?search=${encodeURIComponent(search)}` : ""}`}
+            className={`group rounded-xl border p-4 shadow-2xs transition-all hover:shadow-xs ${
+              !statusFilter
+                ? "border-slate-400 bg-white ring-2 ring-slate-400/20 shadow-xs"
+                : "border-slate-200 bg-white hover:border-slate-300"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Leads</p>
+              {!statusFilter && (
+                <span className="h-1.5 w-1.5 rounded-full bg-slate-900" />
+              )}
+            </div>
+            <p className="mt-1 text-2xl font-bold tracking-tight text-slate-950">{countTotal}</p>
+            <p className="mt-1 text-[11px] text-slate-400">All registered records</p>
+          </Link>
+
+          <Link
+            href={`/admin/leads?status=NEW${search ? `&search=${encodeURIComponent(search)}` : ""}`}
+            className={`group rounded-xl border p-4 shadow-2xs transition-all hover:shadow-xs ${
+              statusFilter === "NEW"
+                ? "border-teal-500 bg-teal-50/70 ring-2 ring-teal-500/20 shadow-xs"
+                : "border-teal-200/80 bg-teal-50/40 hover:border-teal-300"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-teal-800 uppercase tracking-wider">New</p>
+              {statusFilter === "NEW" ? (
+                <span className="h-1.5 w-1.5 rounded-full bg-teal-600" />
+              ) : countNew > 0 ? (
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-teal-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-teal-500" />
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-1 text-2xl font-bold tracking-tight text-teal-900">{countNew}</p>
+            <p className="mt-1 text-[11px] text-teal-700/70">Needs initial outreach</p>
+          </Link>
+
+          <Link
+            href={`/admin/leads?status=CONTACTED${search ? `&search=${encodeURIComponent(search)}` : ""}`}
+            className={`group rounded-xl border p-4 shadow-2xs transition-all hover:shadow-xs ${
+              statusFilter === "CONTACTED"
+                ? "border-amber-500 bg-amber-50/70 ring-2 ring-amber-500/20 shadow-xs"
+                : "border-amber-200/80 bg-amber-50/40 hover:border-amber-300"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-amber-800 uppercase tracking-wider">Contacted</p>
+              {statusFilter === "CONTACTED" && (
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-600" />
+              )}
+            </div>
+            <p className="mt-1 text-2xl font-bold tracking-tight text-amber-900">{countContacted}</p>
+            <p className="mt-1 text-[11px] text-amber-700/70">Follow-up in progress</p>
+          </Link>
+
+          <Link
+            href={`/admin/leads?status=QUALIFIED${search ? `&search=${encodeURIComponent(search)}` : ""}`}
+            className={`group rounded-xl border p-4 shadow-2xs transition-all hover:shadow-xs ${
+              statusFilter === "QUALIFIED"
+                ? "border-emerald-500 bg-emerald-50/70 ring-2 ring-emerald-500/20 shadow-xs"
+                : "border-emerald-200/80 bg-emerald-50/40 hover:border-emerald-300"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-emerald-800 uppercase tracking-wider">Qualified</p>
+              {statusFilter === "QUALIFIED" && (
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+              )}
+            </div>
+            <p className="mt-1 text-2xl font-bold tracking-tight text-emerald-900">{countQualified}</p>
+            <p className="mt-1 text-[11px] text-emerald-700/70">Ready for scheduling</p>
+          </Link>
+
+          <Link
+            href={`/admin/leads?status=CLOSED_LOST${search ? `&search=${encodeURIComponent(search)}` : ""}`}
+            className={`group rounded-xl border p-4 shadow-2xs transition-all hover:shadow-xs ${
+              statusFilter === "CLOSED_LOST"
+                ? "border-slate-400 bg-slate-100 ring-2 ring-slate-400/20 shadow-xs"
+                : "border-slate-200 bg-slate-100/60 hover:border-slate-300"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Closed Lost</p>
+              {statusFilter === "CLOSED_LOST" && (
+                <span className="h-1.5 w-1.5 rounded-full bg-slate-600" />
+              )}
+            </div>
+            <p className="mt-1 text-2xl font-bold tracking-tight text-slate-800">{countClosedLost}</p>
+            <p className="mt-1 text-[11px] text-slate-500">Archived / declined</p>
+          </Link>
         </div>
 
         {/* Leads Table & Filters */}
