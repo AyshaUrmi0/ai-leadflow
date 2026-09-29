@@ -27,7 +27,7 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
   // Data Access Layer security boundary check
   const admin = await getAuthenticatedAdmin();
   if (!admin) {
-    redirect("/admin/login?callbackUrl=/admin/leads");
+    redirect("/login?callbackUrl=/admin/leads");
   }
 
   const resolvedSearchParams = await searchParams;

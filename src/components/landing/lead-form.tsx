@@ -149,7 +149,7 @@ export function LeadForm({ user }: LeadFormProps = {}) {
         </p>
         <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
           <Link
-            href="/admin/login"
+            href="/login"
             className="w-full sm:w-auto inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 transition-colors"
           >
             Sign In

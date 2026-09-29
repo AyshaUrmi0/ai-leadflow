@@ -18,7 +18,7 @@ export default async function AdminDashboardPage() {
   // Data Access Layer security boundary check
   const admin = await getAuthenticatedAdmin();
   if (!admin) {
-    redirect("/admin/login?callbackUrl=/admin/dashboard");
+    redirect("/login?callbackUrl=/admin/dashboard");
   }
 
   // Database domain service aggregation

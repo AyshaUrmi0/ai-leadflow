@@ -89,7 +89,7 @@ Patient Portal (/portal)                   Deterministic Scoring Engine
 1. Visitor Arrival          Landing page introduces Nova Dental (demo clinic) services and FAQs.
        │                    Navbar dynamically guides visitors to Sign In or Create Account.
        ▼
-2. Registration / Login     Guest registers at /register (creates Role.USER) or logs in at /admin/login.
+2. Registration / Login     Guest registers at /register (creates Role.USER) or logs in at /login.
        │                    Session established via HttpOnly, SameSite=lax JWT cookie.
        ▼
 3. Consultation Request     Authenticated patient submits consultation form.
@@ -302,10 +302,10 @@ AI LeadFlow implements defense-in-depth across authentication, authorization, da
 1. **HttpOnly Session Cookies:** Sessions are stored in HttpOnly, SameSite=lax JWT cookies signed with `jose` (HS256). The `secure` flag is automatically enabled in production. Cookies cannot be accessed by client-side JavaScript.
 2. **Server-Side Authentication & Authorization (DAL):** The Data Access Layer (`src/lib/dal.ts`) performs server-side authentication and authorization checks with cached database entity resolution (`verifySession`, `getAuthenticatedAdmin`, `getAuthenticatedUser`) for protected routes and Server Actions.
 3. **Route-Level Access Policy Enforcement (`src/proxy.ts`):** Enforces route-level access policies before request completion:
-   * `/admin/*` requires `Role.ADMIN`. Unauthenticated requests redirect to `/admin/login`; authenticated `Role.USER` requests are redirected to `/portal`.
-   * `/portal/*` requires an authenticated session. Unauthenticated requests redirect to `/admin/login`.
+   * `/admin/*` requires `Role.ADMIN`. Unauthenticated requests redirect to `/login`; authenticated `Role.USER` requests are redirected to `/portal`.
+   * `/portal/*` requires an authenticated session. Unauthenticated requests redirect to `/login`.
    * `/api/admin/*` returns HTTP 401 Unauthorized for non-admin sessions.
-   * `/admin/login` redirects already-authenticated users to their respective workspace.
+   * `/login` redirects already-authenticated users to their respective workspace.
 4. **Relational `userId` Ownership Enforcement:** Patient portal queries filter strictly by `Lead.userId = user.id`. Anonymous leads (`userId = null`) or leads matching another user's email cannot be accessed.
 5. **`userId` Spoofing Prevention:** The consultation endpoint (`POST /api/leads`) resolves `userId` strictly from the server-verified session via `getAuthenticatedUser()`. Any client-provided `userId` parameter in the request body is stripped and rejected.
 6. **Registration Privilege Escalation Prevention:** The `registerAction` server action hardcodes `role: "USER"`. Client attempts to pass `role: "ADMIN"` are discarded.
@@ -356,7 +356,7 @@ Covering 12 security and workflow domains:
 1. **Password Hashing & Verification:** bcryptjs hashing with 12 salt rounds; verification of valid and invalid passwords.
 2. **Session JWT Encryption & Decryption:** jose cryptographic token creation, valid decryption, payload verification, and invalid token rejection.
 3. **Authorization & Role Boundary Logic:** DAL `verifySession` behavior for `ADMIN`, `USER`, and unauthenticated requests.
-4. **Route Proxy Policy Rules:** Route matrix verification for `/admin/*`, `/portal/*`, `/api/admin/*`, and `/admin/login`.
+4. **Route Proxy Policy Rules:** Route matrix verification for `/admin/*`, `/portal/*`, `/api/admin/*`, and `/login`.
 5. **Demo Account Resolution:** Correct mapping of admin and user demo accounts.
 6. **Demo Credential Error Handling:** Server-side error reporting when required environment variables are absent.
 7. **User Data Isolation by `userId`:** Proving that User A queries return only User A's records, never returning User B's records or anonymous records sharing the same email.
@@ -500,7 +500,7 @@ pnpm exec prisma db seed
 ```bash
 pnpm dev
 ```
-Open [http://localhost:3000](http://localhost:3000) to view the Nova Dental demo landing page, or visit [http://localhost:3000/admin/login](http://localhost:3000/admin/login) to evaluate the application.
+Open [http://localhost:3000](http://localhost:3000) to view the Nova Dental demo landing page, or visit [http://localhost:3000/login](http://localhost:3000/login) to evaluate the application.
 
 #### Recruiter & Evaluator Demo Access
 On the login page, you can use one-click buttons to evaluate both system roles without manually typing credentials:

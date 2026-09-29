@@ -130,7 +130,7 @@ export async function demoLoginAction(role: "ADMIN" | "USER"): Promise<LoginActi
 
 export async function logoutAction() {
   await deleteSession();
-  redirect("/admin/login");
+  redirect("/login");
 }
 
 export async function registerAction(

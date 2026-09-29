@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAuthenticatedUser } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
-import { logoutAction } from "@/app/admin/login/actions";
+import { logoutAction } from "@/app/login/actions";
 import { LeadStatus } from "@prisma/client";
 
 export const metadata: Metadata = {
@@ -72,7 +72,7 @@ export default async function UserPortalPage() {
   const user = await getAuthenticatedUser();
 
   if (!user) {
-    redirect("/admin/login?callbackUrl=/portal");
+    redirect("/login?callbackUrl=/portal");
   }
 
   // Server-side user data isolation: userId is the authoritative source of truth for lead ownership
