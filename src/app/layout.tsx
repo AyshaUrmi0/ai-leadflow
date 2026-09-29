@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Nova Dental | Modern dental care with a personal touch",
   description:
-    "Nova Dental is a fictional modern dental clinic focused on thoughtful care, clear guidance, and comfortable consultations.",
+    "Nova Dental is a modern dental clinic focused on thoughtful care, clear guidance, and comfortable consultations.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

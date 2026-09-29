@@ -11,7 +11,7 @@ export function Hero() {
         <div className="max-w-2xl">
           <p className="mb-5 text-sm font-semibold tracking-[0.16em] text-teal-800 uppercase">Thoughtful dentistry, clearly explained</p>
           <h1 className="text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">Dental care that helps you feel at ease.</h1>
-          <p className="mt-6 max-w-xl text-lg leading-8 text-slate-600">Nova Dental is a fictional modern clinic where experienced professionals, practical technology, and a comfortable pace come together for every visit.</p>
+          <p className="mt-6 max-w-xl text-lg leading-8 text-slate-600">Nova Dental is a modern clinic where experienced professionals, practical technology, and a comfortable pace come together for every visit.</p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <a href="#contact" className="inline-flex min-h-12 items-center justify-center rounded-md bg-teal-700 px-5 text-sm font-semibold text-white hover:bg-teal-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Arrange a consultation</a>
             <a href="#services" className="inline-flex min-h-12 items-center justify-center rounded-md border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-800 hover:border-slate-400 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Explore our services</a>

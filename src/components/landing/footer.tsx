@@ -7,7 +7,7 @@ export function Footer() {
             Nova <span className="text-teal-300">Dental</span>
           </p>
           <p className="mt-2 text-sm leading-6 text-slate-400">
-            A fictional modern dental clinic created for the AI LeadFlow portfolio project.
+            Thoughtful, modern dental care focused on your health, comfort, and confidence.
           </p>
         </div>
         <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm font-medium" aria-label="Footer navigation">

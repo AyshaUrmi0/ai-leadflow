@@ -12,12 +12,12 @@ const questions = [
   {
     question: "How do I arrange a consultation?",
     answer:
-      "Use the consultation link below to contact the fictional Nova Dental team. A real booking workflow can be added in a future product phase.",
+      "Use the consultation form below to share your inquiry. Our team will review your request and get in touch with you promptly to confirm your visit.",
   },
   {
-    question: "Is Nova Dental a real clinic?",
+    question: "Do you offer emergency dental appointments?",
     answer:
-      "No. Nova Dental is a fictional clinic created as part of the AI LeadFlow portfolio project.",
+      "Yes. If you are experiencing sudden tooth pain, dental trauma, or urgent discomfort, reach out to us and our clinic team will prioritize scheduling you as quickly as possible.",
   },
 ];
 
