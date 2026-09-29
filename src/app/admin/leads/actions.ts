@@ -44,6 +44,7 @@ export async function updateLeadStatusAction(id: string, status: string) {
 
     await updateLeadStatus(leadId, validStatus, session.userId);
     revalidatePath("/admin/leads");
+    revalidatePath("/admin/dashboard");
 
     return {
       success: true,
@@ -86,6 +87,7 @@ export async function addLeadNoteAction(leadId: string, content: string) {
     });
 
     revalidatePath("/admin/leads");
+    revalidatePath("/admin/dashboard");
 
     return {
       success: true,
@@ -217,6 +219,7 @@ export async function createLeadTaskAction(
     });
 
     revalidatePath("/admin/leads");
+    revalidatePath("/admin/dashboard");
 
     return {
       success: true,
@@ -275,6 +278,7 @@ export async function updateTaskStatusAction(taskId: string, status: string) {
     });
 
     revalidatePath("/admin/leads");
+    revalidatePath("/admin/dashboard");
 
     return {
       success: true,
