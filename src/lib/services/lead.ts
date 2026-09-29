@@ -35,6 +35,8 @@ export async function getLeads(params?: GetLeadsParams) {
     whereClause.OR = [
       { name: { contains: query, mode: "insensitive" } },
       { email: { contains: query, mode: "insensitive" } },
+      { phone: { contains: query, mode: "insensitive" } },
+      { serviceInterest: { contains: query, mode: "insensitive" } },
     ];
   }
 

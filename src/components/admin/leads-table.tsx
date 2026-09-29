@@ -132,7 +132,7 @@ export function LeadsTable({
             type="text"
             value={searchValue}
             onChange={handleSearchChange}
-            placeholder="Search name or email..."
+            placeholder="Search patient, email, phone, or service..."
             className="w-full min-h-10 rounded-md border border-slate-300 bg-white px-3.5 py-2 pl-9 text-xs text-slate-900 placeholder:text-slate-400 focus:border-teal-700 focus:outline-2 focus:outline-teal-700"
           />
           <svg
@@ -150,6 +150,47 @@ export function LeadsTable({
             />
           </svg>
         </div>
+      </div>
+
+      {/* Quick Treatment & Filter Pills Strip */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+          <span className="text-[11px] font-medium text-slate-400">Quick Filter:</span>
+          {["Implants", "Whitening", "Invisalign", "Checkup", "Emergency"].map((svc) => {
+            const isSelected = searchValue.toLowerCase() === svc.toLowerCase();
+            return (
+              <button
+                key={svc}
+                type="button"
+                onClick={() => {
+                  const nextSearch = isSelected ? "" : svc;
+                  setSearchValue(nextSearch);
+                  updateQueryParams(nextSearch, currentStatus, 1);
+                }}
+                className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-all ${
+                  isSelected
+                    ? "bg-teal-700 text-white font-semibold shadow-2xs"
+                    : "bg-slate-100 text-slate-600 hover:bg-teal-50 hover:text-teal-900 border border-slate-200/80"
+                }`}
+              >
+                {svc}
+              </button>
+            );
+          })}
+        </div>
+
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={() => {
+              setSearchValue("");
+              updateQueryParams("", "", 1);
+            }}
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-600 hover:text-rose-800 transition-colors"
+          >
+            <span>✕ Reset all filters</span>
+          </button>
+        )}
       </div>
 
       {updateError && (
