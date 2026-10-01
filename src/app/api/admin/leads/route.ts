@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { getLeads } from "@/lib/services/lead";
 import { adminLeadsQuerySchema } from "@/lib/validations/lead";
-import { verifySession } from "@/lib/dal";
+import { getAuthenticatedAdmin } from "@/lib/dal";
 
 export async function GET(request: Request) {
   try {
-    // Authorization boundary check
-    const session = await verifySession();
-    if (!session.isAuth) {
+    // Authorization boundary check against current database role
+    const admin = await getAuthenticatedAdmin();
+    if (!admin) {
       return NextResponse.json(
         {
           success: false,

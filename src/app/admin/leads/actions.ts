@@ -9,13 +9,13 @@ import { getLeadActivityTimeline } from "@/lib/services/activity";
 import { createLeadTask, getLeadTasks, updateLeadTaskStatus } from "@/lib/services/task";
 import { getAdminUsers } from "@/lib/services/user";
 import { getLeadScoreData, getLeadAIIntelligence } from "@/lib/services/intelligence";
-import { verifySession } from "@/lib/dal";
+import { getAuthenticatedAdmin } from "@/lib/dal";
 import { revalidatePath } from "next/cache";
 
 export async function updateLeadStatusAction(id: string, status: string) {
-  // Authorization boundary check
-  const session = await verifySession();
-  if (!session.isAuth || !session.userId) {
+  // Authorization boundary check against current database role
+  const admin = await getAuthenticatedAdmin();
+  if (!admin) {
     return {
       success: false,
       error: "Unauthorized: You must be logged in as an admin to perform this action.",
@@ -42,7 +42,7 @@ export async function updateLeadStatusAction(id: string, status: string) {
       };
     }
 
-    await updateLeadStatus(leadId, validStatus, session.userId);
+    await updateLeadStatus(leadId, validStatus, admin.id);
     revalidatePath("/admin/leads");
     revalidatePath("/admin/dashboard");
 
@@ -59,9 +59,9 @@ export async function updateLeadStatusAction(id: string, status: string) {
 }
 
 export async function addLeadNoteAction(leadId: string, content: string) {
-  // Authorization boundary check
-  const session = await verifySession();
-  if (!session.isAuth || !session.userId) {
+  // Authorization boundary check against current database role
+  const admin = await getAuthenticatedAdmin();
+  if (!admin) {
     return {
       success: false,
       error: "Unauthorized: You must be logged in as an admin to perform this action.",
@@ -83,7 +83,7 @@ export async function addLeadNoteAction(leadId: string, content: string) {
     const note = await createLeadNote({
       leadId: validLeadId,
       content: validContent,
-      authorId: session.userId,
+      authorId: admin.id,
     });
 
     revalidatePath("/admin/leads");
@@ -117,9 +117,9 @@ export async function addLeadNoteAction(leadId: string, content: string) {
 }
 
 export async function getLeadTimelineAction(leadId: string) {
-  // Authorization boundary check
-  const session = await verifySession();
-  if (!session.isAuth || !session.userId) {
+  // Authorization boundary check against current database role
+  const admin = await getAuthenticatedAdmin();
+  if (!admin) {
     return {
       success: false,
       error: "Unauthorized: You must be logged in as an admin to perform this action.",
@@ -176,9 +176,9 @@ export async function createLeadTaskAction(
   dueDate?: string,
   assignedToId?: string
 ) {
-  // Authorization boundary check
-  const session = await verifySession();
-  if (!session.isAuth || !session.userId) {
+  // Authorization boundary check against current database role
+  const admin = await getAuthenticatedAdmin();
+  if (!admin) {
     return {
       success: false,
       error: "Unauthorized: You must be logged in as an admin to perform this action.",
@@ -215,7 +215,7 @@ export async function createLeadTaskAction(
       description: validDescription,
       dueDate: validDueDate,
       assignedToId: validAssignedToId,
-      creatorId: session.userId,
+      creatorId: admin.id,
     });
 
     revalidatePath("/admin/leads");
@@ -250,9 +250,9 @@ export async function createLeadTaskAction(
 }
 
 export async function updateTaskStatusAction(taskId: string, status: string) {
-  // Authorization boundary check
-  const session = await verifySession();
-  if (!session.isAuth || !session.userId) {
+  // Authorization boundary check against current database role
+  const admin = await getAuthenticatedAdmin();
+  if (!admin) {
     return {
       success: false,
       error: "Unauthorized: You must be logged in as an admin to perform this action.",
@@ -274,7 +274,7 @@ export async function updateTaskStatusAction(taskId: string, status: string) {
     const task = await updateLeadTaskStatus({
       taskId: validTaskId,
       status: validStatus,
-      actorId: session.userId,
+      actorId: admin.id,
     });
 
     revalidatePath("/admin/leads");
@@ -301,9 +301,9 @@ export async function updateTaskStatusAction(taskId: string, status: string) {
 }
 
 export async function getLeadTasksAction(leadId: string) {
-  // Authorization boundary check
-  const session = await verifySession();
-  if (!session.isAuth || !session.userId) {
+  // Authorization boundary check against current database role
+  const admin = await getAuthenticatedAdmin();
+  if (!admin) {
     return {
       success: false,
       error: "Unauthorized: You must be logged in as an admin to perform this action.",
@@ -345,9 +345,9 @@ export async function getLeadTasksAction(leadId: string) {
 }
 
 export async function getAdminUsersAction() {
-  // Authorization boundary check
-  const session = await verifySession();
-  if (!session.isAuth || !session.userId) {
+  // Authorization boundary check against current database role
+  const admin = await getAuthenticatedAdmin();
+  if (!admin) {
     return {
       success: false,
       error: "Unauthorized: You must be logged in as an admin to perform this action.",
@@ -373,9 +373,9 @@ export async function getAdminUsersAction() {
 }
 
 export async function getLeadScoreAction(leadId: string) {
-  // Authorization boundary check
-  const session = await verifySession();
-  if (!session.isAuth || !session.userId) {
+  // Authorization boundary check against current database role
+  const admin = await getAuthenticatedAdmin();
+  if (!admin) {
     return {
       success: false,
       error: "Unauthorized: You must be logged in as an admin to perform this action.",
@@ -416,9 +416,9 @@ export async function getLeadScoreAction(leadId: string) {
 }
 
 export async function generateAIIntelligenceAction(leadId: string) {
-  // Authorization boundary check
-  const session = await verifySession();
-  if (!session.isAuth || !session.userId) {
+  // Authorization boundary check against current database role
+  const admin = await getAuthenticatedAdmin();
+  if (!admin) {
     return {
       success: false as const,
       error: "Unauthorized: You must be logged in as an admin to perform this action.",
