@@ -1,5 +1,7 @@
 # AI LeadFlow
 
+**Live Demo:** [https://ai-leadflow.vercel.app/](https://ai-leadflow.vercel.app/)
+
 An open-source lead management and intelligence platform for service-based businesses, demonstrated through **Nova Dental** (a dental clinic practice reference implementation).
 
 AI LeadFlow combines an authoritative, deterministic qualification engine with an on-demand, advisory AI intelligence layer (Google Gemini). Front-desk coordinators can triage inbound inquiries, manage consultation pipelines, and coordinate follow-up tasks—without delegating critical business decisions or database mutations to an unconstrained LLM.
@@ -110,9 +112,9 @@ pnpm exec prisma db seed
 ```bash
 pnpm dev
 ```
-Open [http://localhost:3000](http://localhost:3000) for the public landing page.
+Open [http://localhost:3000](http://localhost:3000) for the public landing page (or access the live deployment directly at [ai-leadflow.vercel.app](https://ai-leadflow.vercel.app/)).
 
-Visit [http://localhost:3000/login](http://localhost:3000/login) to evaluate demo accounts with one-click access:
+Visit [https://ai-leadflow.vercel.app/login](https://ai-leadflow.vercel.app/login) (or local `/login`) to evaluate demo accounts with one-click access:
 * **Admin Demo** (`admin@novadental.com`): Full CRM access, lead scoring, notes, tasks, and AI insights.
 * **Patient Demo** (`user@novadental.com`): Patient portal with live consultation tracking (attempting to access `/admin/*` is blocked by route proxy policies).
 
