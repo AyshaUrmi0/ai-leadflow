@@ -7,7 +7,7 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx tests/ai-infrastructure.ts && tsx tests/ai-lead-intelligence.ts && tsx tests/authentication.ts"
+    "test": "tsx tests/ai-infrastructure.ts && tsx tests/ai-lead-intelligence.ts && tsx tests/authentication.ts && tsx tests/admin-management.ts"
   },
   "dependencies": {
     "@google/genai": "^2.24.0",
