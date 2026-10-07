@@ -46,7 +46,8 @@ export type AIErrorCode =
   | "PROVIDER_ERROR"
   | "PARSE_ERROR"
   | "VALIDATION_ERROR"
-  | "EMPTY_RESPONSE";
+  | "EMPTY_RESPONSE"
+  | "RATE_LIMITED";
 
 export type AIIntelligenceResult =
   | {

@@ -314,6 +314,66 @@ async function runTests() {
     "src/lib/ai/provider.ts enforces server-only boundary via 'import \"server-only\";'"
   );
 
+  // 15. Testing In-Memory AI Rate Limiter
+  console.log("\n15. Testing In-Memory AI Rate Limiter...");
+  const { checkAIRateLimit, _resetRateLimitStore, _getRateLimitStoreSize } = await import(
+    "../src/lib/rate-limit"
+  );
+  _resetRateLimitStore();
+
+  const testAdminId1 = "admin_user_alpha";
+  const testAdminId2 = "admin_user_beta";
+
+  // Initial request passes
+  const firstReq = checkAIRateLimit(testAdminId1);
+  assert(firstReq.allowed === true, "First request is allowed under rate limit");
+  assert(firstReq.remaining === 4, "Remaining count is decremented to 4");
+  assert(firstReq.totalLimit === 5, "Total limit reflects default of 5");
+  assert(firstReq.resetInSeconds > 0, "Reset seconds window is provided");
+
+  // Fire requests 2 through 5
+  checkAIRateLimit(testAdminId1);
+  checkAIRateLimit(testAdminId1);
+  checkAIRateLimit(testAdminId1);
+  const fifthReq = checkAIRateLimit(testAdminId1);
+  assert(fifthReq.allowed === true, "Fifth request is still allowed");
+  assert(fifthReq.remaining === 0, "Remaining count is 0 after 5 requests");
+
+  // Sixth request should be rejected
+  const sixthReq = checkAIRateLimit(testAdminId1);
+  assert(sixthReq.allowed === false, "Sixth request is rejected (rate limited)");
+  assert(sixthReq.remaining === 0, "Remaining is 0 when rate limited");
+  assert(sixthReq.resetInSeconds > 0, "Reset in seconds is positive when rate limited");
+
+  // Different user ID has separate quota and is NOT blocked
+  const user2Req = checkAIRateLimit(testAdminId2);
+  assert(user2Req.allowed === true, "Different user ID has independent quota and is allowed");
+  assert(user2Req.remaining === 4, "Different user ID remaining count is 4");
+
+  // Custom options work
+  const customLimitUser = "custom_limit_user";
+  const custom1 = checkAIRateLimit(customLimitUser, { limit: 2, windowMs: 5000 });
+  assert(custom1.allowed === true && custom1.remaining === 1, "Custom limit of 2 allows 1st request");
+  const custom2 = checkAIRateLimit(customLimitUser, { limit: 2, windowMs: 5000 });
+  assert(custom2.allowed === true && custom2.remaining === 0, "Custom limit allows 2nd request");
+  const custom3 = checkAIRateLimit(customLimitUser, { limit: 2, windowMs: 5000 });
+  assert(custom3.allowed === false, "Custom limit rejects 3rd request");
+
+  // Server-only boundary check on rate-limit.ts
+  const rateLimitFileContent = fs.readFileSync(
+    path.resolve(__dirname, "../src/lib/rate-limit.ts"),
+    "utf-8"
+  );
+  assert(
+    rateLimitFileContent.startsWith('import "server-only";') ||
+      rateLimitFileContent.includes('import "server-only";'),
+    "src/lib/rate-limit.ts enforces server-only boundary via 'import \"server-only\";'"
+  );
+
+  assert(_getRateLimitStoreSize() > 0, "Rate limit store tracks active callers");
+  _resetRateLimitStore();
+  assert(_getRateLimitStoreSize() === 0, "Rate limit store is empty after reset");
+
   console.log("\n==================================================");
   console.log(`Results: ${passedCount} / ${totalCount} checks PASSED.`);
   console.log("==================================================");
