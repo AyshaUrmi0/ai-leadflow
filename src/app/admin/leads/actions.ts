@@ -10,6 +10,7 @@ import { createLeadTask, getLeadTasks, updateLeadTaskStatus } from "@/lib/servic
 import { getAdminUsers } from "@/lib/services/user";
 import { getLeadScoreData, getLeadAIIntelligence } from "@/lib/services/intelligence";
 import { getAuthenticatedAdmin } from "@/lib/dal";
+import { checkAIRateLimit } from "@/lib/rate-limit";
 import { revalidatePath } from "next/cache";
 
 export async function updateLeadStatusAction(id: string, status: string) {
@@ -429,6 +430,16 @@ export async function generateAIIntelligenceAction(leadId: string) {
     return {
       success: false as const,
       error: "Invalid lead ID.",
+    };
+  }
+
+  // In-memory rate limiting check per administrator
+  const rateLimit = checkAIRateLimit(admin.id);
+  if (!rateLimit.allowed) {
+    return {
+      success: false as const,
+      error: `Rate limit exceeded: Maximum ${rateLimit.totalLimit} AI insights per minute. Please try again in ${rateLimit.resetInSeconds}s.`,
+      code: "RATE_LIMITED" as const,
     };
   }
 
