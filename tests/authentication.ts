@@ -96,6 +96,7 @@ async function runTests() {
     userId: "user_admin_123",
     email: "admin@novadental.com",
     role: "ADMIN",
+    tokenVersion: 1,
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
   };
 
@@ -107,11 +108,13 @@ async function runTests() {
   assert(decryptedAdmin?.userId === "user_admin_123", "Decrypted userId matches");
   assert(decryptedAdmin?.email === "admin@novadental.com", "Decrypted email matches");
   assert(decryptedAdmin?.role === "ADMIN", "Decrypted role is ADMIN");
+  assert(decryptedAdmin?.tokenVersion === 1, "Decrypted tokenVersion matches");
 
   const userPayload: SessionPayload = {
     userId: "user_staff_456",
     email: "user@novadental.com",
     role: "USER",
+    tokenVersion: 1,
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
   };
 
@@ -119,6 +122,7 @@ async function runTests() {
   const decryptedUser = await decryptSession(userToken);
   assert(decryptedUser !== null, "User session token decrypts successfully");
   assert(decryptedUser?.role === "USER", "Decrypted role is USER");
+  assert(decryptedUser?.tokenVersion === 1, "Decrypted user tokenVersion is 1");
 
   const invalidToken = await decryptSession("invalid.tampered.token");
   assert(invalidToken === null, "Invalid session token returns null");

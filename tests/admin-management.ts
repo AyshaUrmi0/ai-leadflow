@@ -90,6 +90,7 @@ async function runTests() {
     getTeamMembers,
     createTeamMember,
     updateUserRole,
+    revokeUserSessions,
   } = await import("../src/lib/services/user");
   const {
     updateUserRoleSchema,
@@ -451,6 +452,7 @@ async function runTests() {
       userId: demotedAdminUser.id,
       email: demotedAdminUser.email,
       role: Role.ADMIN, // Stale JWT claims role: ADMIN
+      tokenVersion: 1,
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     });
 
@@ -499,6 +501,43 @@ async function runTests() {
       staleNoteAction.error?.includes("Unauthorized") === true,
       "addLeadNoteAction returns unauthorized error for stale ADMIN JWT"
     );
+
+    // 6. Test Token Version Revocation (User remains ADMIN, but session token is revoked)
+    console.log("  Testing Token Version Session Revocation...");
+    const revokingAdminUser = await prisma.user.create({
+      data: {
+        name: "Revocable Admin",
+        email: `revocable_admin_${testSuffix}@example.com`,
+        passwordHash: demotedUserHash,
+        role: Role.ADMIN,
+        tokenVersion: 1,
+      },
+    });
+    createdTestUserIds.push(revokingAdminUser.id);
+
+    const tokenBeforeRevocation = await encryptSession({
+      userId: revokingAdminUser.id,
+      email: revokingAdminUser.email,
+      role: Role.ADMIN,
+      tokenVersion: 1,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+
+    mockCookiesStore.set("admin_session", { value: tokenBeforeRevocation });
+    const preRevocationRes = await getAdminLeadsRoute(new Request("http://localhost:3000/api/admin/leads"));
+    assert(preRevocationRes.status === 200, "Active token with matching tokenVersion succeeds (200)");
+
+    // Explicitly revoke all sessions by incrementing tokenVersion
+    await revokeUserSessions(revokingAdminUser.id);
+
+    // Try accessing protected route with previous token (tokenVersion mismatch)
+    const postRevocationRes = await getAdminLeadsRoute(new Request("http://localhost:3000/api/admin/leads"));
+    assert(
+      postRevocationRes.status === 401,
+      "Revoked session with mismatched tokenVersion is strictly rejected with 401"
+    );
+    const postRevocationData = await postRevocationRes.json();
+    assert(postRevocationData.success === false, "Revoked token API response indicates success: false");
 
     // 17. Testing Role Concurrency & Last-Admin Invariant Protection
     console.log("\n17. Testing Role Concurrency & Last-Admin Invariant...");

@@ -181,12 +181,16 @@ export async function updateUserRole({
 
         const updatedUser = await tx.user.update({
           where: { id: targetUserId },
-          data: { role: newRole },
+          data: {
+            role: newRole,
+            tokenVersion: { increment: 1 },
+          },
           select: {
             id: true,
             name: true,
             email: true,
             role: true,
+            tokenVersion: true,
             updatedAt: true,
           },
         });
@@ -234,4 +238,21 @@ export async function updateUserRole({
     }
     throw error;
   }
+}
+
+/**
+ * Revokes all active sessions for a user by atomically incrementing their tokenVersion.
+ */
+export async function revokeUserSessions(userId: string) {
+  return await prisma.user.update({
+    where: { id: userId },
+    data: {
+      tokenVersion: { increment: 1 },
+    },
+    select: {
+      id: true,
+      email: true,
+      tokenVersion: true,
+    },
+  });
 }

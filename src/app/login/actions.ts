@@ -69,7 +69,7 @@ export async function loginAction(
       };
     }
 
-    await createSession(user.id, user.email, user.role);
+    await createSession(user.id, user.email, user.role, user.tokenVersion);
 
     // Role-aware redirect with open-redirect prevention
     let targetRedirect = user.role === "ADMIN" ? "/admin/dashboard" : "/portal";
@@ -180,7 +180,7 @@ export async function registerAction(
       },
     });
 
-    await createSession(user.id, user.email, user.role);
+    await createSession(user.id, user.email, user.role, user.tokenVersion);
 
     redirect("/portal");
   } catch (error) {

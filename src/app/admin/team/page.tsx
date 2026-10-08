@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getAuthenticatedAdmin } from "@/lib/dal";
+import { deleteSession } from "@/lib/auth/session";
 import { getTeamMembers } from "@/lib/services/user";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { TeamTable } from "@/components/admin/team/team-table";
@@ -13,6 +14,7 @@ export const metadata: Metadata = {
 export default async function AdminTeamPage() {
   const admin = await getAuthenticatedAdmin();
   if (!admin) {
+    await deleteSession();
     redirect("/login?callbackUrl=/admin/team");
   }
 

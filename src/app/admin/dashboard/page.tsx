@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAuthenticatedAdmin } from "@/lib/dal";
+import { deleteSession } from "@/lib/auth/session";
 import { getDashboardMetrics } from "@/lib/services/dashboard";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { RecentActivityFeed } from "@/components/admin/recent-activity-feed";
@@ -18,6 +19,7 @@ export default async function AdminDashboardPage() {
   // Data Access Layer security boundary check
   const admin = await getAuthenticatedAdmin();
   if (!admin) {
+    await deleteSession();
     redirect("/login?callbackUrl=/admin/dashboard");
   }
 
