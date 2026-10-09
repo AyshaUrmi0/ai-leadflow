@@ -7,7 +7,7 @@ export interface SessionPayload {
   userId: string;
   email: string;
   role: Role;
-  tokenVersion: number;
+  tokenVersion?: number;
   expiresAt: string;
 }
 
@@ -37,7 +37,8 @@ function getEncodedSecret(): Uint8Array {
 
 
 export async function encryptSession(payload: SessionPayload): Promise<string> {
-  return new SignJWT({ ...payload })
+  const tokenVersion = payload.tokenVersion ?? 1;
+  return new SignJWT({ ...payload, tokenVersion })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
