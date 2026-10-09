@@ -46,8 +46,7 @@ flowchart TD
 * **Lead Intelligence Dashboard (`/admin/dashboard`):** High-level metrics for total volume, pipeline distribution, task completion, and recent activity.
 * **Searchable Leads Management (`/admin/leads`):** Paginated leads table with real-time search, status filtering, and inline status updates.
 * **Lead Details Drawer:** Slide-over panel containing contact details, consultation history, deterministic score breakdown, and advisory AI insights.
-* **Internal Clinical Notes & Follow-up Tasks:** Timestamped staff notes, task assignment with due dates, and task status tracking (`PENDING`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED`).
-* **Team & Role Management:** Administration of clinic team accounts with last-admin demotion safeguards and concurrent role protection.
+* **Team & Role Management:** Administration of clinic team accounts with last-admin demotion safeguards, concurrent role protection under Serializable transactions, and instant session revocation via database `tokenVersion` tracking.
 * **Unified Activity Timeline:** Chronological event feed auditing status changes, notes, tasks, and administrative updates.
 
 ---
@@ -59,9 +58,9 @@ flowchart TD
 | **Framework** | [Next.js 16](https://nextjs.org/) (App Router) | React Server Components, Server Actions, Route Handlers |
 | **Frontend** | [React 19](https://react.dev/), [Tailwind CSS v4](https://tailwindcss.com/) | Modern UI components, design tokens, responsive layouts |
 | **Language** | [TypeScript 5](https://www.typescriptlang.org/) | Strict static typing across schemas, actions, and tests |
-| **Database & ORM** | [PostgreSQL](https://www.postgresql.org/), [Prisma ORM](https://www.prisma.io/) | Relational models, 6 schema migrations, foreign key integrity |
+| **Database & ORM** | [PostgreSQL](https://www.postgresql.org/), [Prisma ORM](https://www.prisma.io/) | Relational models, 7 schema migrations, foreign key integrity |
 | **Validation** | [Zod](https://zod.dev/) | Runtime validation for inputs, API payloads, and AI outputs |
-| **Authentication** | [Jose](https://github.com/panva/jose), [bcryptjs](https://github.com/dcodeIO/bcrypt.js) | HttpOnly SameSite JWT cookies (HS256) and salted password hashing |
+| **Authentication** | [Jose](https://github.com/panva/jose), [bcryptjs](https://github.com/dcodeIO/bcrypt.js) | HttpOnly SameSite JWT cookies (HS256) with database `tokenVersion` session revocation, live DAL role authority, and salted password hashing |
 | **AI Integration** | [Google Gemini](https://ai.google.dev/) via `@google/genai` | Structured advisory analysis (`gemini-3.5-flash-lite`) |
 | **Isolation** | `server-only` | Compile-time barrier preventing server logic in client bundles |
 | **Testing & CI** | [tsx](https://github.com/privatenumber/tsx), GitHub Actions | Automated verification suites run in PostgreSQL 16 container |
@@ -122,7 +121,7 @@ Visit [https://ai-leadflow.vercel.app/login](https://ai-leadflow.vercel.app/logi
 
 ## Testing & Quality Assurance
 
-Run the automated test suite executing **239 checks** across 4 verification domains:
+Run the automated test suite executing **281 checks** across 5 verification domains:
 
 ```bash
 # Run all automated test suites
@@ -137,10 +136,11 @@ pnpm build
 ```
 
 ### Test Suite Overview
-* `tests/ai-infrastructure.ts` (40 checks): Schema compliance, string length bounds, XML delimiter construction, missing key handling, and `server-only` isolation.
+* `tests/ai-infrastructure.ts` (56 checks): Schema compliance, string length bounds, XML delimiter construction, missing key handling, in-memory sliding window rate limiting, and `server-only` isolation.
 * `tests/ai-lead-intelligence.ts` (37 checks): Safe context assembly, PII scrubbing (no email/phone in prompt), deterministic score inclusion, and database immutability.
-* `tests/authentication.ts` (81 checks): Bcrypt hashing, JWT issuance and validation, Data Access Layer (DAL) role checks, route proxy policies, and relational `userId` data isolation.
-* `tests/admin-management.ts` (81 checks): Lead status transitions, internal notes, task lifecycle, team member management, self-demotion prevention, and concurrent last-admin protection.
+* `tests/authentication.ts` (84 checks): Bcrypt hashing, JWT issuance and validation, Data Access Layer (DAL) role checks, route proxy policies, and relational `userId` data isolation.
+* `tests/admin-management.ts` (84 checks): Lead status transitions, internal notes, task lifecycle, team member management, self-demotion prevention, and concurrent last-admin protection.
+* `tests/verify-stale-authorization.ts` (20 checks): Empirical verification of database `tokenVersion` tracking, stale role revocation across DAL/actions/routes, immediate session invalidation (`revokeUserSessions`), and deleted user rejection.
 
 ---
 
