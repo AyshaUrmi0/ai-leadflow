@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAuthenticatedUser } from "@/lib/dal";
+import { deleteSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { logoutAction } from "@/app/login/actions";
 import { LeadStatus } from "@prisma/client";
@@ -72,6 +73,7 @@ export default async function UserPortalPage() {
   const user = await getAuthenticatedUser();
 
   if (!user) {
+    await deleteSession();
     redirect("/login?callbackUrl=/portal");
   }
 

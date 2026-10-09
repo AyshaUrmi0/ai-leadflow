@@ -8,6 +8,7 @@ export interface VerifySessionResult {
   userId: string | null;
   email: string | null;
   role: string | null;
+  tokenVersion: number | null;
 }
 
 export const verifySession = cache(async (): Promise<VerifySessionResult> => {
@@ -20,6 +21,7 @@ export const verifySession = cache(async (): Promise<VerifySessionResult> => {
       userId: null,
       email: null,
       role: null,
+      tokenVersion: null,
     };
   }
 
@@ -28,12 +30,15 @@ export const verifySession = cache(async (): Promise<VerifySessionResult> => {
     userId: session.userId,
     email: session.email,
     role: session.role,
+    tokenVersion: session.tokenVersion ?? 1,
   };
 });
 
 export const getAuthenticatedAdmin = cache(async () => {
-  const session = await verifySession();
-  if (!session.isAuth || !session.userId) {
+  const token = await getSessionCookie();
+  const session: SessionPayload | null = await decryptSession(token);
+
+  if (!session || !session.userId) {
     return null;
   }
 
@@ -45,11 +50,20 @@ export const getAuthenticatedAdmin = cache(async () => {
         email: true,
         name: true,
         role: true,
+        tokenVersion: true,
         createdAt: true,
       },
     });
 
     if (!user || user.role !== "ADMIN") {
+      return null;
+    }
+
+    // Token Version Revocation Check:
+    // If the user's tokenVersion was incremented (e.g. role change, password reset, or session revocation),
+    // or if the session tokenVersion doesn't match the database, reject the session.
+    const sessionTokenVersion = session.tokenVersion ?? 1;
+    if (user.tokenVersion !== sessionTokenVersion) {
       return null;
     }
 
@@ -76,9 +90,20 @@ export const getAuthenticatedUser = cache(async () => {
         email: true,
         name: true,
         role: true,
+        tokenVersion: true,
         createdAt: true,
       },
     });
+
+    if (!user) {
+      return null;
+    }
+
+    // Token Version Revocation Check:
+    const sessionTokenVersion = session.tokenVersion ?? 1;
+    if (user.tokenVersion !== sessionTokenVersion) {
+      return null;
+    }
 
     return user;
   } catch (error) {

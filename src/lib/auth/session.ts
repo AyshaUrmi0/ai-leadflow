@@ -7,10 +7,11 @@ export interface SessionPayload {
   userId: string;
   email: string;
   role: Role;
+  tokenVersion?: number;
   expiresAt: string;
 }
 
-const COOKIE_NAME = "admin_session";
+export const COOKIE_NAME = "admin_session";
 const DEFAULT_SECRET = "fallback-dev-secret-key-must-be-changed-in-production-32-chars";
 
 function getEncodedSecret(): Uint8Array {
@@ -25,12 +26,19 @@ function getEncodedSecret(): Uint8Array {
     return new TextEncoder().encode(DEFAULT_SECRET);
   }
 
+  if (secret.length < 32 && process.env.NODE_ENV === "production") {
+    throw new Error(
+      "FATAL: SESSION_SECRET must be at least 32 characters long for cryptographic security in production."
+    );
+  }
+
   return new TextEncoder().encode(secret);
 }
 
 
 export async function encryptSession(payload: SessionPayload): Promise<string> {
-  return new SignJWT({ ...payload })
+  const tokenVersion = payload.tokenVersion ?? 1;
+  return new SignJWT({ ...payload, tokenVersion })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
@@ -52,7 +60,12 @@ export async function decryptSession(
   }
 }
 
-export async function createSession(userId: string, email: string, role: Role) {
+export async function createSession(
+  userId: string,
+  email: string,
+  role: Role,
+  tokenVersion: number = 1
+) {
   const expiresAtDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   const expiresAt = expiresAtDate.toISOString();
 
@@ -60,6 +73,7 @@ export async function createSession(userId: string, email: string, role: Role) {
     userId,
     email,
     role,
+    tokenVersion,
     expiresAt,
   });
 

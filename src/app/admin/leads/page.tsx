@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAuthenticatedAdmin } from "@/lib/dal";
+import { deleteSession } from "@/lib/auth/session";
 import { getLeads } from "@/lib/services/lead";
 import { LeadsTable } from "@/components/admin/leads-table";
 import { AdminNav } from "@/components/admin/admin-nav";
@@ -28,6 +29,7 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
   // Data Access Layer security boundary check
   const admin = await getAuthenticatedAdmin();
   if (!admin) {
+    await deleteSession();
     redirect("/login?callbackUrl=/admin/leads");
   }
 
