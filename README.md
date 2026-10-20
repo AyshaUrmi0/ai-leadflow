@@ -141,6 +141,7 @@ pnpm build
 * `tests/authentication.ts` (84 checks): Bcrypt hashing, JWT issuance and validation, Data Access Layer (DAL) role checks, route proxy policies, and relational `userId` data isolation.
 * `tests/admin-management.ts` (84 checks): Lead status transitions, internal notes, task lifecycle, team member management, self-demotion prevention, and concurrent last-admin protection.
 * `tests/verify-stale-authorization.ts` (20 checks): Empirical verification of database `tokenVersion` tracking, stale role revocation across DAL/actions/routes, immediate session invalidation (`revokeUserSessions`), and deleted user rejection.
+* `tests/google-oauth.ts` (43 checks): Google OAuth 2.0 flow verification, CSRF state protection, open-redirect defense, automatic account linking, and user provisioning.
 
 ---
 
@@ -154,6 +155,9 @@ pnpm build
 | `USER_INITIAL_PASSWORD` | Seed | Initial password for seeded patient demo account |
 | `ADMIN_INITIAL_EMAIL` | Optional | Initial admin email (default: `admin@novadental.com`) |
 | `USER_INITIAL_EMAIL` | Optional | Initial patient email (default: `user@novadental.com`) |
+| `GOOGLE_CLIENT_ID` | Optional | Google OAuth 2.0 Client ID for Google Sign-In |
+| `GOOGLE_CLIENT_SECRET` | Optional | Google OAuth 2.0 Client Secret for Google Sign-In |
+| `APP_URL` | Optional | Canonical application URL override (defaults to host/origin or `http://localhost:3000`) |
 | `GEMINI_API_KEY` | Optional | Google Gemini API key for on-demand AI lead intelligence |
 | `GEMINI_MODEL` | Optional | Model identifier (default: `gemini-3.5-flash-lite`) |
 
