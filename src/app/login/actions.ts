@@ -60,6 +60,13 @@ export async function loginAction(
       };
     }
 
+    if (!user.passwordHash) {
+      return {
+        success: false,
+        error: "This account was registered with Google. Please sign in with Google.",
+      };
+    }
+
     const isPasswordValid = await verifyPassword(password, user.passwordHash);
 
     if (!isPasswordValid) {

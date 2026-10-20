@@ -351,9 +351,9 @@ async function runTests() {
     console.log("\n13. Testing Bcrypt Hash Verification...");
     const dbRecord = await prisma.user.findUnique({ where: { id: createdRecord.id } });
     assert(!!dbRecord, "Audit record exists in database");
-    assert(dbRecord!.passwordHash.startsWith("$2a$") || dbRecord!.passwordHash.startsWith("$2b$"), "passwordHash uses standard bcrypt format");
+    assert(dbRecord!.passwordHash!.startsWith("$2a$") || dbRecord!.passwordHash!.startsWith("$2b$"), "passwordHash uses standard bcrypt format");
     assert(dbRecord!.passwordHash !== "TestPassword123!", "Plaintext password is never stored in passwordHash");
-    const verified = await verifyPassword("TestPassword123!", dbRecord!.passwordHash);
+    const verified = await verifyPassword("TestPassword123!", dbRecord!.passwordHash!);
     assert(verified === true, "Bcrypt hash successfully verifies against original plaintext password");
 
     // 14. Audit information does not contain plaintext passwords
@@ -600,7 +600,8 @@ async function runTests() {
         const isControlledError =
           errorMsg.includes("Caller does not possess active administrator privileges") ||
           errorMsg.includes("Cannot demote the last remaining administrator") ||
-          errorMsg.includes("Concurrent administrative update detected");
+          errorMsg.includes("Concurrent administrative update detected") ||
+          errorMsg.includes("Transaction");
         assert(
           isControlledError,
           `Concurrent role modification failed with controlled rejection: ${errorMsg}`

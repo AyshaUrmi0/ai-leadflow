@@ -477,7 +477,7 @@ async function runTests() {
       "Stored password is not the plaintext password"
     );
 
-    const isPasswordValid = await verifyPassword(testRegPassword, createdUser!.passwordHash);
+    const isPasswordValid = await verifyPassword(testRegPassword, createdUser!.passwordHash!);
     assert(isPasswordValid === true, "Stored password hash verifies successfully with verifyPassword");
 
     // 11.3 Session creation verification
