@@ -1,0 +1,85 @@
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Database Service
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    container_name: ai_leadflow_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-demo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-demo}
+      POSTGRES_DB: ${POSTGRES_DB:-ai_leadflow}
+    ports:
+      # Bound to loopback interface to prevent exposing the database publicly
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-demo} -d ${POSTGRES_DB:-ai_leadflow}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # One-Shot Database Migration Service
+  # Runs Prisma migrations using the builder image before the app starts.
+  # ---------------------------------------------------------------------------
+  migrate:
+    build:
+      context: .
+      target: builder
+    container_name: ai_leadflow_migrate
+    restart: "no"
+    command: pnpm exec prisma migrate deploy
+    environment:
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-demo}:${POSTGRES_PASSWORD:-demo}@db:5432/${POSTGRES_DB:-ai_leadflow}"
+      ADMIN_INITIAL_EMAIL: "${ADMIN_INITIAL_EMAIL:-admin@novadental.com}"
+      ADMIN_INITIAL_PASSWORD: "${ADMIN_INITIAL_PASSWORD:-}"
+      USER_INITIAL_EMAIL: "${USER_INITIAL_EMAIL:-user@novadental.com}"
+      USER_INITIAL_PASSWORD: "${USER_INITIAL_PASSWORD:-}"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # AI LeadFlow Next.js Application Service (Pure Standalone Runner)
+  # ---------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      target: runner
+    container_name: ai_leadflow_app
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-demo}:${POSTGRES_PASSWORD:-demo}@db:5432/${POSTGRES_DB:-ai_leadflow}"
+      # Mandatory secret: fails immediately if SESSION_SECRET is missing from .env
+      SESSION_SECRET: "${SESSION_SECRET:?SESSION_SECRET must be set in .env}"
+      ADMIN_INITIAL_EMAIL: "${ADMIN_INITIAL_EMAIL:-admin@novadental.com}"
+      ADMIN_INITIAL_PASSWORD: "${ADMIN_INITIAL_PASSWORD:-}"
+      USER_INITIAL_EMAIL: "${USER_INITIAL_EMAIL:-user@novadental.com}"
+      USER_INITIAL_PASSWORD: "${USER_INITIAL_PASSWORD:-}"
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
+      GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET:-}"
+      APP_URL: "${APP_URL:-http://localhost:3000}"
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+      PORT: 3000
+      HOSTNAME: "0.0.0.0"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO /dev/null http://127.0.0.1:3000/ || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  postgres_data:
+    driver: local

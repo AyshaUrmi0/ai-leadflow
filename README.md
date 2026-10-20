@@ -119,6 +119,53 @@ Visit [https://ai-leadflow.vercel.app/login](https://ai-leadflow.vercel.app/logi
 
 ---
 
+## Run with Docker
+
+Run the complete production stack (Next.js standalone container + PostgreSQL 16 database) locally with zero host dependencies other than Docker.
+
+### Prerequisites
+* [Docker Desktop](https://www.docker.com/products/docker-desktop/) or Docker Engine with Docker Compose v2.
+
+### 1. Configure Environment
+Copy the example environment file if not already present:
+```bash
+cp .env.example .env
+```
+*(Optional: Add your `GEMINI_API_KEY` in `.env` to enable on-demand Google Gemini lead intelligence).*
+
+### 2. Build & Launch the Containers
+```bash
+docker compose up --build
+```
+This single command:
+1. Compiles the multi-stage Docker build with pnpm, Node 22, and Next.js standalone optimization.
+2. Starts the PostgreSQL 16 container (`ai_leadflow_db`) and verifies readiness via the `pg_isready` healthcheck.
+3. Automatically runs a one-shot migration service (`ai_leadflow_migrate`) executing `prisma migrate deploy`.
+4. Starts the production application (`ai_leadflow_app`) as an unprivileged non-root user (`nextjs`, UID 1001) on [http://localhost:3000](http://localhost:3000) only after migrations complete successfully.
+
+> [!NOTE]
+> **Browser Cookie Behavior:** In production mode (`NODE_ENV=production`), session cookies are set with `Secure: true`. Modern browsers (Chrome, Firefox) allow `Secure` cookies over `http://localhost:3000`. If testing in Safari or across a LAN/custom host without HTTPS, ensure an HTTPS proxy is configured.
+
+### 3. Seed Demo Data (First Run)
+Populate demo leads, admin credentials, and initial consultation tasks inside the container environment:
+```bash
+docker compose run --rm migrate pnpm exec prisma db seed
+```
+
+> [!NOTE]
+> **Demo Account Requirements:** The one-click demo login buttons on `/login` authenticate seeded users against PostgreSQL using credentials configured in `.env` (`ADMIN_INITIAL_PASSWORD` and `USER_INITIAL_PASSWORD`). If you modify these passwords in `.env`, re-run the seed command so the database password hashes match. Seeding requires these variables to be configured in `.env`.
+
+### 4. Stop Containers
+To stop the services while preserving database data:
+```bash
+docker compose down
+```
+
+> [!CAUTION]
+> **Destructive Data Loss:** Running `docker compose down -v` removes the named volume `postgres_data`. This permanently deletes all persisted PostgreSQL records—including registered users, consultation requests, activity logs, and seeded accounts. Only use `-v` if you intend to execute a full database wipe.
+
+---
+
 ## Testing & Quality Assurance
 
 Run the automated test suite executing **281 checks** across 5 verification domains:
