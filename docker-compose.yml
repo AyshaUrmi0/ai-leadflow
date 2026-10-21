@@ -64,7 +64,8 @@ services:
       USER_INITIAL_PASSWORD: "${USER_INITIAL_PASSWORD:-}"
       GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
       GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET:-}"
-      APP_URL: "${APP_URL:-http://localhost:3000}"
+      # Matches the published host port below; used for the Google OAuth redirect URI
+      APP_URL: "${APP_URL:-http://localhost:3001}"
       GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
       PORT: 3000
       HOSTNAME: "0.0.0.0"
