@@ -183,12 +183,12 @@ pnpm build
 ```
 
 ### Test Suite Overview
-* `tests/ai-infrastructure.ts` (56 checks): Schema compliance, string length bounds, XML delimiter construction, missing key handling, in-memory sliding window rate limiting, and `server-only` isolation.
-* `tests/ai-lead-intelligence.ts` (37 checks): Safe context assembly, PII scrubbing (no email/phone in prompt), deterministic score inclusion, and database immutability.
-* `tests/authentication.ts` (84 checks): Bcrypt hashing, JWT issuance and validation, Data Access Layer (DAL) role checks, route proxy policies, and relational `userId` data isolation.
-* `tests/admin-management.ts` (84 checks): Lead status transitions, internal notes, task lifecycle, team member management, self-demotion prevention, and concurrent last-admin protection.
-* `tests/verify-stale-authorization.ts` (20 checks): Empirical verification of database `tokenVersion` tracking, stale role revocation across DAL/actions/routes, immediate session invalidation (`revokeUserSessions`), and deleted user rejection.
-* `tests/google-oauth.ts` (43 checks): Google OAuth 2.0 flow verification, CSRF state protection, open-redirect defense, automatic account linking, and user provisioning.
+* `tests/ai-infrastructure.test.ts` (56 checks): Schema compliance, string length bounds, XML delimiter construction, missing key handling, in-memory sliding window rate limiting, and `server-only` isolation.
+* `tests/ai-lead-intelligence.test.ts` (37 checks): Safe context assembly, PII scrubbing (no email/phone in prompt), deterministic score inclusion, and database immutability.
+* `tests/authentication.test.ts` (84 checks): Bcrypt hashing, JWT issuance and validation, Data Access Layer (DAL) role checks, route proxy policies, and relational `userId` data isolation.
+* `tests/admin-management.test.ts` (84 checks): Lead status transitions, internal notes, task lifecycle, team member management, self-demotion prevention, and concurrent last-admin protection.
+* `tests/verify-stale-authorization.test.ts` (20 checks): Empirical verification of database `tokenVersion` tracking, stale role revocation across DAL/actions/routes, immediate session invalidation (`revokeUserSessions`), and deleted user rejection.
+* `tests/google-oauth.test.ts` (43 checks): Google OAuth 2.0 flow verification, CSRF state protection, open-redirect defense, automatic account linking, and user provisioning.
 
 ---
 
