@@ -20,7 +20,7 @@ interface LeadFormProps {
 }
 
 export function LeadForm({ user }: LeadFormProps = {}) {
-  const [formData, setFormData] = useState<LeadFormState>({
+  const emptyForm = (): LeadFormState => ({
     name: user?.name || "",
     email: user?.email || "",
     phone: "",
@@ -28,6 +28,7 @@ export function LeadForm({ user }: LeadFormProps = {}) {
     message: "",
     consentGiven: false,
   });
+  const [formData, setFormData] = useState<LeadFormState>(emptyForm);
   const [status, setStatus] = useState<FormStatus>("idle");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [serverError, setServerError] = useState<string | null>(null);
@@ -95,14 +96,6 @@ export function LeadForm({ user }: LeadFormProps = {}) {
 
       if (response.status === 201 && responseData.success) {
         setStatus("success");
-        setFormData({
-          name: user?.name || "",
-          email: user?.email || "",
-          phone: "",
-          serviceInterest: undefined,
-          message: "",
-          consentGiven: false,
-        });
       } else if (response.status === 400 && responseData.errors) {
         setFieldErrors(responseData.errors);
         setServerError(responseData.message || "Please fix the highlighted errors below.");
@@ -124,14 +117,7 @@ export function LeadForm({ user }: LeadFormProps = {}) {
     setStatus("idle");
     setFieldErrors({});
     setServerError(null);
-    setFormData({
-      name: user?.name || "",
-      email: user?.email || "",
-      phone: "",
-      serviceInterest: undefined,
-      message: "",
-      consentGiven: false,
-    });
+    setFormData(emptyForm());
   };
 
   // State 1: Unauthenticated visitor guidance
