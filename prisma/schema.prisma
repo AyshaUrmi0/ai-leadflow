@@ -49,8 +49,6 @@ model User {
   performedActions LeadActivityLog[]
   createdTasks     LeadTask[]        @relation("TaskCreator")
   assignedTasks    LeadTask[]        @relation("TaskAssignee")
-
-  @@index([email])
 }
 
 model Lead {
