@@ -4,7 +4,14 @@ import { loginSchema, registerSchema } from "@/lib/validations/auth";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession, deleteSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { checkAIRateLimit, clearRateLimit } from "@/lib/rate-limit";
+import { Prisma } from "@prisma/client";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+
+const LOGIN_ATTEMPT_LIMIT = 5;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const SECONDS_PER_MINUTE = 60;
 
 export interface LoginActionState {
   success?: boolean;
@@ -48,6 +55,23 @@ export async function loginAction(
 
   const { email, password } = validationResult.data;
 
+  // Key on IP + email: blocks guessing from one IP without letting anyone lock a victim out from another IP.
+  // shortcut: in-memory store is per server instance (weak on serverless), upgrade to Redis/Upstash for production.
+  const ip = (await headers()).get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
+  const rateLimitKey = `login:${ip}:${email}`;
+  const rateLimit = checkAIRateLimit(rateLimitKey, {
+    limit: LOGIN_ATTEMPT_LIMIT,
+    windowMs: LOGIN_WINDOW_MS,
+  });
+
+  if (!rateLimit.allowed) {
+    const minutes = Math.ceil(rateLimit.resetInSeconds / SECONDS_PER_MINUTE);
+    return {
+      success: false,
+      error: `Too many login attempts. Please try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`,
+    };
+  }
+
   try {
     const user = await prisma.user.findUnique({
       where: { email },
@@ -76,6 +100,7 @@ export async function loginAction(
       };
     }
 
+    clearRateLimit(rateLimitKey);
     await createSession(user.id, user.email, user.role, user.tokenVersion);
 
     // Role-aware redirect with open-redirect prevention
@@ -193,6 +218,14 @@ export async function registerAction(
   } catch (error) {
     if (error instanceof Error && error.message === "NEXT_REDIRECT") {
       throw error;
+    }
+
+    // Two concurrent sign-ups with the same email both pass findUnique; the unique constraint rejects the second
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return {
+        success: false,
+        error: "An account with this email address already exists.",
+      };
     }
 
     console.error("Unhandled error during registration:", error);
