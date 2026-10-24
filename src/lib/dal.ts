@@ -3,37 +3,6 @@ import { cache } from "react";
 import { getSessionCookie, decryptSession, type SessionPayload } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 
-export interface VerifySessionResult {
-  isAuth: boolean;
-  userId: string | null;
-  email: string | null;
-  role: string | null;
-  tokenVersion: number | null;
-}
-
-export const verifySession = cache(async (): Promise<VerifySessionResult> => {
-  const token = await getSessionCookie();
-  const session: SessionPayload | null = await decryptSession(token);
-
-  if (!session || !session.userId || session.role !== "ADMIN") {
-    return {
-      isAuth: false,
-      userId: null,
-      email: null,
-      role: null,
-      tokenVersion: null,
-    };
-  }
-
-  return {
-    isAuth: true,
-    userId: session.userId,
-    email: session.email,
-    role: session.role,
-    tokenVersion: session.tokenVersion ?? 1,
-  };
-});
-
 export const getAuthenticatedAdmin = cache(async () => {
   const token = await getSessionCookie();
   const session: SessionPayload | null = await decryptSession(token);
