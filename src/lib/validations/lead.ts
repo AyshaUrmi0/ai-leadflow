@@ -42,8 +42,6 @@ export const updateLeadStatusSchema = z.object({
   status: z.enum(leadStatusValues),
 });
 
-export type UpdateLeadStatusInput = z.infer<typeof updateLeadStatusSchema>;
-
 export const adminLeadsQuerySchema = z.object({
   status: z.enum(leadStatusValues).optional(),
   search: z.string().trim().max(100).optional(),
@@ -52,5 +50,3 @@ export const adminLeadsQuerySchema = z.object({
   sortBy: z.enum(["createdAt", "updatedAt", "name", "email", "status"]).default("createdAt"),
   sortOrder: z.enum(["asc", "desc"]).default("desc"),
 });
-
-export type AdminLeadsQuery = z.infer<typeof adminLeadsQuerySchema>;
