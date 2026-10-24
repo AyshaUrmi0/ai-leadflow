@@ -91,6 +91,13 @@ export function checkAIRateLimit(
 }
 
 /**
+ * Clears the counter for one identifier, e.g. after a successful login so only failures count.
+ */
+export function clearRateLimit(identifier: string): void {
+  store.delete(identifier);
+}
+
+/**
  * Resets the in-memory rate limit store. Intended for automated test isolation.
  */
 export function _resetRateLimitStore(): void {

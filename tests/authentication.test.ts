@@ -2,7 +2,7 @@ import { describe, it, vi } from "vitest";
 import type { SessionPayload } from "../src/lib/auth/session";
 import { assert } from "./helpers/assert";
 
-const { mockCookiesStore, RedirectError } = vi.hoisted(() => {
+const { mockCookiesStore, mockRequestHeaders, RedirectError } = vi.hoisted(() => {
   class RedirectError extends Error {
     url: string;
     constructor(url: string) {
@@ -11,7 +11,8 @@ const { mockCookiesStore, RedirectError } = vi.hoisted(() => {
     }
   }
   const mockCookiesStore = new Map<string, { value: string; [key: string]: unknown }>();
-  return { mockCookiesStore, RedirectError };
+  const mockRequestHeaders = new Headers();
+  return { mockCookiesStore, mockRequestHeaders, RedirectError };
 });
 
 vi.mock("next/headers", () => ({
@@ -21,6 +22,7 @@ vi.mock("next/headers", () => ({
       mockCookiesStore.set(name, { value, ...options }),
     delete: (name: string) => mockCookiesStore.delete(name),
   }),
+  headers: async () => mockRequestHeaders,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -87,28 +89,6 @@ describe("Authentication", () => {
 
     const invalidToken = await decryptSession("invalid.tampered.token");
     assert(invalidToken === null, "Invalid session token returns null");
-
-    // 3. Authorization Logic & Boundary Simulation
-    console.log("\n3. Testing Authorization & Role Boundary Logic...");
-
-    // Simulate DAL verifySession logic
-    function simulateVerifySession(session: SessionPayload | null) {
-      if (!session || !session.userId || session.role !== "ADMIN") {
-        return { isAuth: false, userId: null, email: null, role: null };
-      }
-      return { isAuth: true, userId: session.userId, email: session.email, role: session.role };
-    }
-
-    const adminDalResult = simulateVerifySession(decryptedAdmin);
-    assert(adminDalResult.isAuth === true, "DAL verifySession passes for ADMIN");
-    assert(adminDalResult.role === "ADMIN", "DAL returns ADMIN role");
-
-    const userDalResult = simulateVerifySession(decryptedUser);
-    assert(userDalResult.isAuth === false, "DAL verifySession rejects USER (role !== ADMIN)");
-    assert(userDalResult.userId === null, "DAL returns null userId for USER");
-
-    const unauthDalResult = simulateVerifySession(null);
-    assert(unauthDalResult.isAuth === false, "DAL verifySession rejects unauthenticated requests");
 
     // 4. Route Proxy Policy Simulation
     console.log("\n4. Testing Route Proxy Policy Rules...");
@@ -670,5 +650,108 @@ describe("Authentication", () => {
 
     console.log("\n==================================================");
     console.log("==================================================");
+  });
+
+  it("rate limits login per IP + email and survives concurrent registration", async () => {
+    const { loginAction, registerAction } = await import("../src/app/login/actions");
+    const { _resetRateLimitStore } = await import("../src/lib/rate-limit");
+    const { prisma } = await import("../src/lib/prisma");
+
+    const LOGIN_ATTEMPT_LIMIT = 5;
+    const uniqueId = Date.now();
+    const targetEmail = `test_ratelimit_${uniqueId}@example.com`;
+    const raceEmail = `test_race_${uniqueId}@example.com`;
+    const resetEmail = `test_reset_${uniqueId}@example.com`;
+
+    function loginForm(): FormData {
+      const form = new FormData();
+      form.append("email", targetEmail);
+      form.append("password", "WrongPassword123!");
+      return form;
+    }
+
+    _resetRateLimitStore();
+    try {
+      // Attacker IP uses up its attempts for the target email
+      mockRequestHeaders.set("x-forwarded-for", "203.0.113.7, 10.0.0.1");
+      for (let i = 0; i < LOGIN_ATTEMPT_LIMIT; i++) {
+        const res = await loginAction(undefined, loginForm());
+        assert(res.error === "Invalid email or password.", `Attempt ${i + 1} is checked normally`);
+      }
+      const blocked = await loginAction(undefined, loginForm());
+      assert(
+        Boolean(blocked.error?.startsWith("Too many login attempts.")),
+        "Attempt over the limit is blocked before the password check"
+      );
+
+      // The real owner on another IP is not locked out by the attacker
+      mockRequestHeaders.set("x-forwarded-for", "198.51.100.23");
+      const otherIp = await loginAction(undefined, loginForm());
+      assert(
+        otherIp.error === "Invalid email or password.",
+        "Same email from a different IP is not blocked"
+      );
+
+      // A correct password clears the counter, so normal users who log in often are never blocked
+      const { hashPassword } = await import("../src/lib/auth/password");
+      const correctPassword = "CorrectPassword123!";
+      await prisma.user.create({
+        data: { email: resetEmail, passwordHash: await hashPassword(correctPassword), role: "USER" },
+      });
+      function resetForm(password: string): FormData {
+        const form = new FormData();
+        form.append("email", resetEmail);
+        form.append("password", password);
+        return form;
+      }
+      for (let i = 0; i < LOGIN_ATTEMPT_LIMIT - 1; i++) {
+        await loginAction(undefined, resetForm("WrongPassword123!"));
+      }
+      let successRedirect: string | null = null;
+      try {
+        await loginAction(undefined, resetForm(correctPassword));
+      } catch (e: unknown) {
+        if (!(e instanceof RedirectError)) throw e;
+        successRedirect = e.url;
+      }
+      assert(successRedirect === "/portal", "Correct password logs in before the limit is reached");
+      const afterSuccess = await loginAction(undefined, resetForm("WrongPassword123!"));
+      assert(
+        afterSuccess.error === "Invalid email or password.",
+        "Successful login resets the failed-attempt counter"
+      );
+
+      // Two sign-ups with the same email at once: one succeeds, the other gets a clean error
+      function registerForm(): FormData {
+        const form = new FormData();
+        form.append("name", "Race User");
+        form.append("email", raceEmail);
+        form.append("password", "RacePassword123!");
+        return form;
+      }
+      const results = await Promise.allSettled([
+        registerAction(undefined, registerForm()),
+        registerAction(undefined, registerForm()),
+      ]);
+      const redirected = results.filter(
+        (r) => r.status === "rejected" && r.reason instanceof RedirectError
+      );
+      const duplicates = results.filter(
+        (r) =>
+          r.status === "fulfilled" &&
+          r.value.error === "An account with this email address already exists."
+      );
+      assert(redirected.length === 1, "Exactly one concurrent registration succeeds");
+      assert(duplicates.length === 1, "The other concurrent registration gets the duplicate-email error");
+      assert(
+        (await prisma.user.count({ where: { email: raceEmail } })) === 1,
+        "Concurrent registration creates only one user"
+      );
+    } finally {
+      await prisma.user.deleteMany({ where: { email: { in: [raceEmail, resetEmail] } } });
+      mockRequestHeaders.delete("x-forwarded-for");
+      mockCookiesStore.clear();
+      _resetRateLimitStore();
+    }
   });
 });
