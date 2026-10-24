@@ -1,13 +1,6 @@
 import { z } from "zod";
 import { TaskStatus } from "@prisma/client";
 
-export const taskStatusValues = [
-  "PENDING",
-  "IN_PROGRESS",
-  "COMPLETED",
-  "CANCELLED",
-] as const;
-
 export const createTaskSchema = z.object({
   leadId: z.string().min(1, "Lead ID is required"),
   title: z

@@ -6,10 +6,7 @@ export const createTeamMemberSchema = z.object({
     .string()
     .trim()
     .min(1, { message: "Full name is required." })
-    .max(100, { message: "Name must be 100 characters or less." })
-    .refine((val) => val.trim().length > 0, {
-      message: "Full name cannot be empty or solely whitespace.",
-    }),
+    .max(100, { message: "Name must be 100 characters or less." }),
   email: z
     .string()
     .trim()
