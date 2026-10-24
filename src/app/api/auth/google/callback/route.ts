@@ -5,7 +5,7 @@ import {
   getGoogleUserInfo,
   handleGoogleUserLogin,
 } from "@/lib/auth/google";
-import { createSession, encryptSession, COOKIE_NAME } from "@/lib/auth/session";
+import { encryptSession, COOKIE_NAME } from "@/lib/auth/session";
 
 export async function GET(request: NextRequest) {
   const baseUrl = getBaseUrl(request);
@@ -75,9 +75,6 @@ export async function GET(request: NextRequest) {
 
     // Link or create user in database
     const user = await handleGoogleUserLogin(profile);
-
-    // Create session in cookies store
-    await createSession(user.id, user.email, user.role, user.tokenVersion);
 
     // Determine target redirect with safety checks
     let target = storedCallbackUrl;

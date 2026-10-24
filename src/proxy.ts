@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { decryptSession } from "@/lib/auth/session";
+import { decryptSession, COOKIE_NAME } from "@/lib/auth/session";
 
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -9,7 +9,7 @@ export default async function proxy(request: NextRequest) {
   const isAdminApiRoute = pathname.startsWith("/api/admin");
   const isPortalRoute = pathname.startsWith("/portal");
 
-  const sessionCookie = request.cookies.get("admin_session")?.value;
+  const sessionCookie = request.cookies.get(COOKIE_NAME)?.value;
   const session = sessionCookie ? await decryptSession(sessionCookie) : null;
   const hasSession = !!(session && session.userId);
   const isAdmin = !!(hasSession && session.role === "ADMIN");
