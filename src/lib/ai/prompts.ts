@@ -5,6 +5,11 @@ export interface PromptPayload {
   userPrompt: string;
 }
 
+// Escapes angle brackets so user text cannot close a delimiter tag (e.g. "</lead_message>") and escape the data block.
+function escapeUntrusted(text: string): string {
+  return text.replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
+
 /**
  * Builds the system and user prompts for lead intelligence analysis.
  *
@@ -46,13 +51,13 @@ You must respond with ONLY a valid, parseable JSON object matching this exact sc
 Key Observations must contain between 1 and 3 items. Do not include any extra keys or markdown wrappers outside the JSON.`;
 
   // Format untrusted user message
-  const rawMessage = input.message?.trim() || "No inquiry message provided.";
+  const rawMessage = escapeUntrusted(input.message?.trim() || "No inquiry message provided.");
 
   // Format untrusted notes
   const notesText =
     input.notes && input.notes.length > 0
       ? input.notes
-          .map((n, idx) => `[Note ${idx + 1}] ${n.content}`)
+          .map((n, idx) => `[Note ${idx + 1}] ${escapeUntrusted(n.content)}`)
           .join("\n")
       : "No internal notes recorded.";
 
@@ -62,8 +67,8 @@ Key Observations must contain between 1 and 3 items. Do not include any extra ke
       ? input.tasks
           .map(
             (t, idx) =>
-              `[Task ${idx + 1}] "${t.title}" | Status: ${t.status}${
-                t.description ? ` | Details: ${t.description}` : ""
+              `[Task ${idx + 1}] "${escapeUntrusted(t.title)}" | Status: ${t.status}${
+                t.description ? ` | Details: ${escapeUntrusted(t.description)}` : ""
               }${t.dueDate ? ` | Due: ${String(t.dueDate)}` : ""}`
           )
           .join("\n")
@@ -78,8 +83,8 @@ Key Observations must contain between 1 and 3 items. Do not include any extra ke
   const userPrompt = `Analyze the following dental lead and produce the required JSON intelligence recommendation:
 
 LEAD CONTEXT:
-- Patient First Name: ${input.firstName?.trim() || "Prospective Patient"}
-- Service Interest: ${input.serviceInterest?.trim() || "General Dentistry"}
+- Patient First Name: ${escapeUntrusted(input.firstName?.trim() || "Prospective Patient")}
+- Service Interest: ${escapeUntrusted(input.serviceInterest?.trim() || "General Dentistry")}
 - Pipeline Status: ${input.status}
 - Deterministic Score (Authoritative): ${input.score}/100
 - Deterministic Temperature: ${input.temperature}

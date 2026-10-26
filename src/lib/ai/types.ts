@@ -24,8 +24,6 @@ export interface SafeTaskContext {
  * - Internal database IDs and full User records
  */
 export interface LeadIntelligenceInput {
-  /** Optional reference for internal server logging only; excluded from prompt */
-  leadId?: string;
   firstName?: string | null;
   serviceInterest?: string | null;
   status: string;
