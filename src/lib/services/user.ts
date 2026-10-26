@@ -195,20 +195,7 @@ export async function updateUserRole({
           },
         });
 
-        // Record audit event
-        recordSecurityAudit({
-          action: "ROLE_CHANGED",
-          actorId: caller.id,
-          actorEmail: caller.email,
-          targetUserId: updatedUser.id,
-          targetUserEmail: updatedUser.email,
-          details: {
-            previousRole: targetUser.role,
-            newRole: updatedUser.role,
-          },
-        });
-
-        return updatedUser;
+        return { updatedUser, caller, previousRole: targetUser.role };
       },
       {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
@@ -216,28 +203,46 @@ export async function updateUserRole({
     );
   };
 
+  let result: Awaited<ReturnType<typeof executeTransaction>>;
   try {
-    return await executeTransaction();
+    result = await executeTransaction();
   } catch (error) {
     // Handle transient PostgreSQL serialization failure (SQLSTATE 40001 / Prisma P2034)
     if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2034"
+      !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+      error.code !== "P2034"
     ) {
-      try {
-        return await executeTransaction();
-      } catch (retryError) {
-        if (
-          retryError instanceof Prisma.PrismaClientKnownRequestError &&
-          retryError.code === "P2034"
-        ) {
-          throw new Error("Concurrent administrative update detected. Please try again.");
-        }
-        throw retryError;
-      }
+      throw error;
     }
-    throw error;
+    try {
+      result = await executeTransaction();
+    } catch (retryError) {
+      if (
+        retryError instanceof Prisma.PrismaClientKnownRequestError &&
+        retryError.code === "P2034"
+      ) {
+        throw new Error("Concurrent administrative update detected. Please try again.");
+      }
+      throw retryError;
+    }
   }
+
+  const { updatedUser, caller, previousRole } = result;
+
+  // Log only after commit: a rolled-back or retried transaction must not leave an audit entry
+  recordSecurityAudit({
+    action: "ROLE_CHANGED",
+    actorId: caller.id,
+    actorEmail: caller.email,
+    targetUserId: updatedUser.id,
+    targetUserEmail: updatedUser.email,
+    details: {
+      previousRole,
+      newRole: updatedUser.role,
+    },
+  });
+
+  return updatedUser;
 }
 
 /**

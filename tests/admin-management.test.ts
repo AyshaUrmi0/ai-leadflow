@@ -613,4 +613,62 @@ describe("Admin management", () => {
       await prisma.$disconnect();
     }
   });
+
+  it("does not write a role-change audit entry when the transaction rolls back", async () => {
+    const { prisma: appPrisma } = await import("../src/lib/prisma");
+    const { updateUserRole } = await import("../src/lib/services/user");
+    const { Prisma } = await import("@prisma/client");
+
+    const suffix = Date.now();
+    const [caller, target] = await Promise.all(
+      ["rollback_caller", "rollback_target"].map((prefix) =>
+        appPrisma.user.create({
+          data: { email: `${prefix}_${suffix}@example.com`, role: Role.ADMIN },
+        })
+      )
+    );
+
+    // Run the real transaction body, then roll it back and report a serialization failure (P2034),
+    // as Postgres does when a Serializable transaction cannot commit.
+    const realTransaction = appPrisma.$transaction.bind(appPrisma);
+    const transactionSpy = vi.spyOn(appPrisma, "$transaction").mockImplementation((async (
+      fn: (tx: unknown) => Promise<unknown>,
+      options?: unknown
+    ) => {
+      await realTransaction(async (tx) => {
+        await fn(tx);
+        throw new Error("force rollback");
+      }, options as Parameters<typeof realTransaction>[1]).catch(() => undefined);
+      throw new Prisma.PrismaClientKnownRequestError("serialization failure", {
+        code: "P2034",
+        clientVersion: "test",
+      });
+    }) as never); // $transaction is overloaded; the spy only needs the interactive form
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => undefined);
+
+    try {
+      let errorMessage: string | null = null;
+      try {
+        await updateUserRole({ targetUserId: target.id, newRole: Role.USER, currentAdminId: caller.id });
+      } catch (error) {
+        errorMessage = error instanceof Error ? error.message : String(error);
+      }
+
+      assert(
+        errorMessage === "Concurrent administrative update detected. Please try again.",
+        "Two serialization failures surface the retry error"
+      );
+      assert(transactionSpy.mock.calls.length === 2, "Transaction is attempted twice (one retry)");
+      const auditLines = infoSpy.mock.calls.filter((args) => String(args[0]).includes("ROLE_CHANGED"));
+      assert(auditLines.length === 0, "No ROLE_CHANGED audit entry for a rolled-back role change");
+
+      const targetAfter = await prisma.user.findUnique({ where: { id: target.id } });
+      assert(targetAfter?.role === Role.ADMIN, "Rolled-back role change leaves the role unchanged");
+      assert(targetAfter?.tokenVersion === target.tokenVersion, "Rolled-back role change keeps tokenVersion");
+    } finally {
+      transactionSpy.mockRestore();
+      infoSpy.mockRestore();
+      await appPrisma.user.deleteMany({ where: { id: { in: [caller.id, target.id] } } });
+    }
+  });
 });
