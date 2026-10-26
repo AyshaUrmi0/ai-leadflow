@@ -5,11 +5,8 @@ export type LeadTemperature = "COLD" | "WARM" | "HOT";
 export interface LeadScoringInput {
   status: LeadStatus;
   phone?: string | null;
-  hasPhone?: boolean;
   serviceInterest?: string | null;
-  hasServiceInterest?: boolean;
   message?: string | null;
-  hasDetailedMessage?: boolean;
   createdAt: Date | string;
   noteCount?: number;
   activeTaskCount?: number;
@@ -64,27 +61,17 @@ export function calculateLeadScore(
   const reasons: string[] = [];
 
   // --- 1. Base Lead Information ---
-  const hasPhone =
-    input.hasPhone ??
-    (typeof input.phone === "string" && input.phone.trim().length > 0);
-  if (hasPhone) {
+  if (input.phone?.trim()) {
     score += 10;
     reasons.push("Phone number provided");
   }
 
-  const hasServiceInterest =
-    input.hasServiceInterest ??
-    (typeof input.serviceInterest === "string" &&
-      input.serviceInterest.trim().length > 0);
-  if (hasServiceInterest) {
+  if (input.serviceInterest?.trim()) {
     score += 10;
     reasons.push("Service interest specified");
   }
 
-  const hasDetailedMessage =
-    input.hasDetailedMessage ??
-    (typeof input.message === "string" && input.message.trim().length > 20);
-  if (hasDetailedMessage) {
+  if ((input.message?.trim().length ?? 0) > 20) {
     score += 10;
     reasons.push("Detailed inquiry message provided");
   }

@@ -76,7 +76,6 @@ export async function assembleLeadIntelligenceContext(
     prisma.lead.findUnique({
       where: { id: leadId },
       select: {
-        id: true,
         name: true,
         serviceInterest: true,
         status: true,
@@ -114,7 +113,6 @@ export async function assembleLeadIntelligenceContext(
   const firstName = lead.name ? lead.name.trim().split(/\s+/)[0] : null;
 
   return {
-    leadId: lead.id,
     firstName: firstName || null,
     serviceInterest: lead.serviceInterest,
     status: lead.status,
